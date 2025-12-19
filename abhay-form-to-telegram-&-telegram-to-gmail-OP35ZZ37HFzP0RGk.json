@@ -1,0 +1,286 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Details Form",
+        "formDescription": "We'll get back to you soon",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name:"
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Company Name:"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        -176
+      ],
+      "id": "33a78a99-abde-4ecf-a863-1fda09df2b3e",
+      "name": "On form submission",
+      "webhookId": "75ffef02-f704-494e-85e1-6e1a60a9c7f4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.clay.com/v3/sources/webhook/pull-in-data-from-a-webhook-736d49ad-745b-4254-a0d1-be6741e1b8de",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Name",
+              "value": "={{ $json['Name:'] }}"
+            },
+            {
+              "name": "Email",
+              "value": "={{ $json.Email }}"
+            },
+            {
+              "name": "Company Name",
+              "value": "={{ $json['Company Name:'] }}"
+            },
+            {
+              "name": "Submission time",
+              "value": "={{ $json.submittedAt }}"
+            },
+            {
+              "name": "Workflow ID",
+              "value": "={{ $workflow.id }}"
+            },
+            {
+              "name": "Resume URL",
+              "value": "={{ $execution.resumeUrl }}"
+            },
+            {
+              "name": "Execution ID",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        -176
+      ],
+      "id": "0087615b-0725-4087-b21a-64725c8dc906",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        -176
+      ],
+      "id": "b884c6d9-d34c-4def-b095-7fdd5889bb99",
+      "name": "Wait",
+      "webhookId": "7b8bfb76-bad6-4385-8501-c2b2ac27f100"
+    },
+    {
+      "parameters": {
+        "chatId": "1749683324",
+        "text": "={{ $json.body.Response }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -176
+      ],
+      "id": "e609bd20-0ede-405a-9ab6-46b08c697888",
+      "name": "Send a text message",
+      "webhookId": "b8b0c098-d8f0-4e2c-881a-58337f5ab2ab",
+      "credentials": {
+        "telegramApi": {
+          "id": "8y5biby4OeS21nd4",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        160
+      ],
+      "id": "9adfeb49-5b9f-489f-9de4-42f9e1c73bcd",
+      "name": "Telegram Trigger",
+      "webhookId": "37a1270c-1628-4f31-8801-a62a96cb0997",
+      "credentials": {
+        "telegramApi": {
+          "id": "8y5biby4OeS21nd4",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.clay.com/v3/sources/webhook/pull-in-data-from-a-webhook-3eefe429-35a6-461f-8305-f8217d901f6b",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Message:",
+              "value": "={{ $json.message.text }}"
+            },
+            {
+              "name": "Name",
+              "value": "={{ $json.message.chat.first_name }}"
+            },
+            {
+              "name": "Resume URL",
+              "value": "={{ $execution.resumeUrl }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        160
+      ],
+      "id": "987d55cc-a251-4d35-8557-0c718a6b6e41",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        160
+      ],
+      "id": "8648ddb5-71ec-414b-893b-32315f06cfde",
+      "name": "Wait1",
+      "webhookId": "7e9fc693-dd50-4d43-85eb-4c60e6aa9f11"
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "Test Subject",
+        "emailType": "text",
+        "message": "={{ $json.body.Response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        160
+      ],
+      "id": "9894b7f4-10d5-4971-afc2-9d7e4361371c",
+      "name": "Send a message",
+      "webhookId": "a83381e5-1d11-45cf-8a96-36e3f8972e71",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PBV8APadE93kLEt1",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
