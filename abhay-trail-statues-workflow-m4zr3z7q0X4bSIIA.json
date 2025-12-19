@@ -1,0 +1,552 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e4ff5a39-b9db-4d55-974b-e893d4a89cd7",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        -208
+      ],
+      "webhookId": "8c92d12c-68ee-4cd2-9931-dabac634fd32"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.type }}",
+              "operation": "contains",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "7a7cb075-66f7-4996-ac9a-d861b9a4fcb3",
+      "name": "Check if Image Present",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.message.image.link }}",
+        "options": {}
+      },
+      "id": "97923671-8dd3-4f32-a811-63af03617e35",
+      "name": "Download WhatsApp Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -304,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "0f043700-1af1-4830-bea5-5f69ddc47909",
+      "name": "Get Images from Drive Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "list"
+      },
+      "id": "a88a6878-76ba-438f-8bd7-345d8c55addf",
+      "name": "List All Statue Images",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.message.audio.link }}",
+        "options": {}
+      },
+      "id": "a1ae52ac-e9bb-40c3-924c-4e0c7cbc1a56",
+      "name": "Download Voice Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -384,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "transcribe"
+      },
+      "id": "3bb5043d-bede-4096-9c2f-350d25acf057",
+      "name": "Transcribe Voice with Whisper",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        -208,
+        -208
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "E6Yr9VhpTqGWiwHI",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Image similarity comparison using Claude Vision API\nconst inputImage = $input.first().binary.data;\nconst driveImages = $input.all().slice(1);\n\nconst matches = [];\n\nfor (const driveImage of driveImages) {\n  // Here we'll use Claude's vision API to compare images\n  const response = await $http.request({\n    method: 'POST',\n    url: 'https://api.anthropic.com/v1/messages',\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': $env.ANTHROPIC_API_KEY,\n      'anthropic-version': '2023-06-01'\n    },\n    body: {\n      model: 'claude-3-5-sonnet-20241022',\n      max_tokens: 1024,\n      messages: [\n        {\n          role: 'user',\n          content: [\n            {\n              type: 'image',\n              source: {\n                type: 'base64',\n                media_type: 'image/jpeg',\n                data: inputImage\n              }\n            },\n            {\n              type: 'image',\n              source: {\n                type: 'base64',\n                media_type: 'image/jpeg',\n                data: driveImage.binary.data\n              }\n            },\n            {\n              type: 'text',\n              text: 'Compare these two statue/idol images. Are they the same statue photographed from different angles? Respond with a JSON object: {\"is_match\": true/false, \"confidence\": 0-100, \"reasoning\": \"brief explanation\"}'\n            }\n          ]\n        }\n      ]\n    }\n  });\n\n  const result = JSON.parse(response.content[0].text);\n  \n  if (result.is_match && result.confidence > 70) {\n    matches.push({\n      driveImageId: driveImage.json.id,\n      driveImageName: driveImage.json.name,\n      confidence: result.confidence,\n      reasoning: result.reasoning\n    });\n  }\n}\n\nreturn {\n  matches: matches,\n  matchCount: matches.length,\n  inputImageData: inputImage,\n  transcription: $('Transcribe Voice with Whisper').first().json.text\n};"
+      },
+      "id": "84af9c91-8b6f-439e-a97d-8dbd2866bba8",
+      "name": "Compare Images with Claude Vision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.matchCount }}",
+              "operation": "equal",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "254bfd78-f501-49a2-a78b-a4279a3e5875",
+      "name": "Check Match Count",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Sender": "={{ $('WhatsApp Webhook').item.json.from }}",
+            "Matched_Image_ID": "={{ $json.matches[0].driveImageId }}",
+            "Matched_Image_Name": "={{ $json.matches[0].driveImageName }}",
+            "Confidence_Score": "={{ $json.matches[0].confidence }}",
+            "Voice_Transcription": "={{ $json.transcription }}",
+            "Status": "Auto-Matched"
+          }
+        },
+        "options": {}
+      },
+      "id": "46c21b83-772f-41d8-9730-99ace3d2dc7c",
+      "name": "Update Sheet - Single Match",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        816,
+        -192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.matchCount }}",
+              "operation": "largerEqual",
+              "value2": 2
+            }
+          ]
+        }
+      },
+      "id": "81ccc38d-73bf-4104-9f7d-46ed4dacc738",
+      "name": "Multiple Matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        576,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('WhatsApp Webhook').item.json.from }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={\"body\": \"Multiple statues found matching your image. Please confirm which one (reply with number):\\n\" + $json.matches.map((m, i) => `${i+1}. ${m.driveImageName} (${m.confidence}% match)`).join('\\n')}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f9d3c7ee-f788-4a2b-a9e3-98a5fdd80ec8",
+      "name": "Send Confirmation Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        16
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LXHRv6mgrupMhbRc",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Sender": "={{ $('WhatsApp Webhook').item.json.from }}",
+            "Matched_Images": "={{ $json.matches.map(m => m.driveImageName).join(', ') }}",
+            "Voice_Transcription": "={{ $json.transcription }}",
+            "Status": "Pending Manual Review",
+            "Match_Details": "={{ JSON.stringify($json.matches) }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "2f01a947-b5bb-4642-8073-1a60633f0ac5",
+      "name": "Flag for Manual Review",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Sender": "={{ $('WhatsApp Webhook').item.json.from }}",
+            "Voice_Transcription": "={{ $json.transcription }}",
+            "Status": "No Match Found",
+            "Notes": "No matching statue found in database"
+          }
+        },
+        "options": {}
+      },
+      "id": "4f383260-9ba8-4783-af90-eb87ea681b32",
+      "name": "Log - No Match",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=Message received and processing started",
+        "options": {}
+      },
+      "id": "39041edb-7200-44f1-b9f5-2b2c8b7c8cb0",
+      "name": "Respond to WhatsApp",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        -16
+      ],
+      "id": "7de20f65-239a-4e95-9fbe-86b0867caeca",
+      "name": "WhatsApp Trigger",
+      "webhookId": "3074dbd8-ad11-4077-be24-a02786658885",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "P6G9jbTAEkB0xgT6",
+          "name": "WhatsApp OAuth account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Check if Image Present": {
+      "main": [
+        [
+          {
+            "node": "Download WhatsApp Image",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "List All Statue Images",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Voice Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List All Statue Images": {
+      "main": [
+        [
+          {
+            "node": "Get Images from Drive Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice Message": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Voice with Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download WhatsApp Image": {
+      "main": [
+        [
+          {
+            "node": "Compare Images with Claude Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Images from Drive Folder": {
+      "main": [
+        [
+          {
+            "node": "Compare Images with Claude Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Voice with Whisper": {
+      "main": [
+        [
+          {
+            "node": "Compare Images with Claude Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Images with Claude Vision": {
+      "main": [
+        [
+          {
+            "node": "Check Match Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Match Count": {
+      "main": [
+        [
+          {
+            "node": "Update Sheet - Single Match",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Multiple Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Multiple Matches?": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Flag for Manual Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - No Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Sheet - Single Match": {
+      "main": [
+        [
+          {
+            "node": "Respond to WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag for Manual Review": {
+      "main": [
+        [
+          {
+            "node": "Respond to WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check if Image Present",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
