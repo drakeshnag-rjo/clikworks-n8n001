@@ -1,0 +1,476 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1014a7bc-a9cb-45ab-8ffc-ec826a323506",
+      "name": "Set date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.currentDate }}",
+        "format": "custom",
+        "customFormat": "dd-MM-yyyy/H:mm",
+        "options": {}
+      },
+      "id": "3ff2d8d0-42ba-4e0b-8f17-7beada0d0dea",
+      "name": "Format date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "commitDate",
+              "value": "={{ $json.formattedDate }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c465c29-58ac-4216-8034-0b9511306eed",
+      "name": "Set commit date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "list",
+        "owner": {
+          "__rl": true,
+          "value": "drakeshnag-rjo",
+          "mode": "list",
+          "cachedResultName": "drakeshnag-rjo",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "clikworks-n8n001",
+          "mode": "list",
+          "cachedResultName": "clikworks-n8n001",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo/clikworks-n8n001"
+        },
+        "filePath": "="
+      },
+      "id": "f2f32881-b6c5-4d66-8d89-4e7340fd849d",
+      "name": "List files from repository [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        112
+      ],
+      "alwaysOutputData": true,
+      "webhookId": "b6b63c19-ccd1-48cc-95cb-e9b1c7d0f543",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "OwUTk6WqrqtdNHsi",
+          "name": "D Rakesh nag Github Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "aggregateItems",
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "name"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69416c4c-183b-4862-a1b5-73e7b897e285",
+      "name": "Combine file names [GITHUB]",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "id": "b96d03f9-2c86-49b2-a402-9833742fc9ff",
+      "name": "Retrieve workflows [N8N]",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        176,
+        112
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "ZpMvHiKh438wH1mG",
+          "name": "Abhay-n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "jsonToBinary",
+        "options": {
+          "fileName": "={{ $json.name.replace(/\\s+/g, '-').toLowerCase() }}-{{ $json.id }}.json"
+        }
+      },
+      "id": "efa12ec4-be2e-4ca1-b550-a90767f2f6df",
+      "name": "Move JSON to binary",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1,
+      "position": [
+        368,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {}
+      },
+      "id": "2bfbb23f-e07e-4100-96b5-84a4c2af2a32",
+      "name": "Split to single items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        800,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node['Combine file names [GITHUB]'].json.name }}",
+              "operation": "contains",
+              "value2": "={{ $binary.data.fileName }}"
+            }
+          ]
+        }
+      },
+      "id": "d111db59-62c1-4152-9f1a-22b51fb30c03",
+      "name": "Check if file exists in repository",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "value": "drakeshnag-rjo",
+          "mode": "list",
+          "cachedResultName": "drakeshnag-rjo",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "clikworks-n8n001",
+          "mode": "list",
+          "cachedResultName": "clikworks-n8n001",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo/clikworks-n8n001"
+        },
+        "filePath": "={{ $('Check if file exists in repository').item.binary.data.fileName }}",
+        "fileContent": "={{ JSON.stringify($input.all()[0].json, null, 2) }}\n",
+        "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
+      },
+      "id": "051813fe-04b1-43c0-9d6d-b6eec6ff25a2",
+      "name": "Update file [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        -128
+      ],
+      "webhookId": "0c03814f-40e2-4046-a58e-720e51ec8ffc",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "OwUTk6WqrqtdNHsi",
+          "name": "D Rakesh nag Github Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "drakeshnag-rjo",
+          "mode": "list",
+          "cachedResultName": "drakeshnag-rjo",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "clikworks-n8n001",
+          "mode": "list",
+          "cachedResultName": "clikworks-n8n001",
+          "cachedResultUrl": "https://github.com/drakeshnag-rjo/clikworks-n8n001"
+        },
+        "filePath": "={{ $('Check if file exists in repository').item.binary.data.fileName }}",
+        "fileContent": "={{ JSON.stringify($input.all()[0].json, null, 2) }}",
+        "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
+      },
+      "id": "11aa3fbf-67ed-4561-a538-9da79eec72ad",
+      "name": "Upload file [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        144
+      ],
+      "webhookId": "8081d7a8-9caf-4879-9575-ae8b540c64f5",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "OwUTk6WqrqtdNHsi",
+          "name": "D Rakesh nag Github Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read the binary file from the input\nconst binaryData = $input.first().binary;\n\n// Get the first binary file (adjust key name if needed)\nconst fileKey = Object.keys(binaryData)[0];\nconst buffer = await this.helpers.getBinaryDataBuffer(0, fileKey);\n\n// Convert buffer to string and parse JSON\nconst jsonString = buffer.toString('utf-8');\nconst workflowData = JSON.parse(jsonString);\n\n// Extract just the nodes and connections in the detailed format\nconst result = {\n  nodes: workflowData.nodes || [],\n  connections: workflowData.connections || {},\n  pinData: workflowData.pinData || {},\n  meta: workflowData.meta || {}\n};\n\n// Return the extracted data\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -128
+      ],
+      "id": "d7796e61-dd48-4fe0-b7d6-522b5d396ab6",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read the binary file from the input\nconst binaryData = $input.first().binary;\n\n// Get the first binary file (adjust key name if needed)\nconst fileKey = Object.keys(binaryData)[0];\nconst buffer = await this.helpers.getBinaryDataBuffer(0, fileKey);\n\n// Convert buffer to string and parse JSON\nconst jsonString = buffer.toString('utf-8');\nconst workflowData = JSON.parse(jsonString);\n\n// Extract just the nodes and connections in the detailed format\nconst result = {\n  nodes: workflowData.nodes || [],\n  connections: workflowData.connections || {},\n  pinData: workflowData.pinData || {},\n  meta: workflowData.meta || {}\n};\n\n// Return the extracted data\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        144
+      ],
+      "id": "44f6ded0-2089-4060-ae25-1e98b043e6eb",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        112
+      ],
+      "id": "3daf1c2c-403e-45d4-8619-e26730b9bedd",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "Set date": {
+      "main": [
+        [
+          {
+            "node": "Format date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format date": {
+      "main": [
+        [
+          {
+            "node": "Set commit date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set commit date": {
+      "main": [
+        [
+          {
+            "node": "List files from repository [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List files from repository [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Combine file names [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine file names [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Retrieve workflows [N8N]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve workflows [N8N]": {
+      "main": [
+        [
+          {
+            "node": "Move JSON to binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move JSON to binary": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split to single items": {
+      "main": [
+        [
+          {
+            "node": "Check if file exists in repository",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check if file exists in repository": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update file [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Update file [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Upload file [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
