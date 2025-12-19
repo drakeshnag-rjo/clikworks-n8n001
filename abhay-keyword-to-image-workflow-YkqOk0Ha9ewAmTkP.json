@@ -1,0 +1,296 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Enter Key word",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Keyword",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -368,
+        -32
+      ],
+      "id": "6c2869cc-2f16-44da-bc0f-762b8188a352",
+      "name": "On form submission",
+      "webhookId": "f7139b65-3a37-47ff-b68a-e8d93f2fd8a4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.Keyword}}",
+        "options": {
+          "systemMessage": "=You are an expert at creating prompts that are description and spot on, and you tasked to take a keyboard and generate the perfect prompt around that keyword to create and image\n\n#output\noutput only prompt"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -32
+      ],
+      "id": "32e93834-0424-42b2-88c5-7c15ae595d36",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        896
+      ],
+      "id": "574be6ba-5b33-4d05-b25e-be70a0e7f44f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "j2Y0xXUeolZr1DfF",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearar 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.5-flash-image-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"{{ $json.output }}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        -32
+      ],
+      "id": "cc5d0fef-fbf8-4114-935b-b9113467aa02",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a580c9f1-d34b-4d3c-b80c-cbc04b0daf1a",
+              "name": "nano ",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url.split(\",\")[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -32
+      ],
+      "id": "0900b89e-a82b-43c3-a350-01570476ef46",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "nano ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        -32
+      ],
+      "id": "7c45ef58-31e3-4692-aab9-731e2beb7862",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        160
+      ],
+      "id": "72c62a0b-d7e9-4b24-8203-899c0b5df6b2",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "Testing",
+        "emailType": "text",
+        "message": "=Keyword Given: {{ $('On form submission').item.json.Keyword }}\nPrompt: {{ $('AI Agent').item.json.output }}\nURL: {{ $json.webViewLink }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1024,
+        -32
+      ],
+      "id": "8a59ff85-bc1e-4552-946a-c70e838fa60f",
+      "name": "Send a message",
+      "webhookId": "d793cb07-5f53-4a6a-b2d4-8fea0f2d7fcf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "j25XZmphXli9KKc4",
+          "name": "Abhay-Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ $('On form submission').item.json.Keyword }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -32
+      ],
+      "id": "79088851-46ad-45ed-a67d-9bf175d3f7a1",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
