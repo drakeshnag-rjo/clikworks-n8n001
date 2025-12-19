@@ -1,0 +1,507 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "85f00123-d081-43d6-884c-33aa04aad536",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        752
+      ],
+      "id": "f9e184fe-de7b-4e7f-b9e0-1dfc7bf90f21",
+      "name": "Webhook",
+      "webhookId": "85f00123-d081-43d6-884c-33aa04aad536"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', `Search for folders in Google Drive by name.\nIMPORTANT: Provide ONLY the folder name as a string (e.g., \"n8n Demo\", \"Infosys\", \"Content\").\nDo NOT include the full query syntax.\nThe tool will automatically search for folders with this name.`, 'string') }}",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Folder', `Specify the parent folder ID to search within (optional).\n\nIf provided, the search will be limited to folders within this parent folder.\nIf left empty, the search will be performed across all of Google Drive.\n\nExample: 1a2b3c4d5e6f7g8h9i0j`, 'string') }}",
+            "mode": "id"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        1216,
+        1200
+      ],
+      "id": "4f371d0d-9381-4c1e-b1f0-4d999e408d10",
+      "name": "Search files and folders in Google Drive1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "b63afed7-5276-4953-9f75-41fd2ea15840",
+      "name": "Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        928,
+        1200
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Session"
+      },
+      "id": "9cb6be73-7140-47ad-95c5-bdd52d072932",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.2,
+      "position": [
+        1072,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\nconst month = String(today.getMonth() + 1).padStart(2, '0');\nconst day = String(today.getDate()).padStart(2, '0');\nconst year = today.getFullYear();\n\nconst companyName = $input.item.json.body.companyName;\nconst internalFolderName = $input.item.json.body.internalFolderName;\nconst dateFolderName = `${companyName} ${month}-${day}-${year}`;\n\nreturn {\n  companyName,\n  internalFolderName,\n  dateFolderName,\n  today: `${month}-${day}-${year}`\n};"
+      },
+      "id": "799899ba-bafe-4a95-9b50-7721889aba59",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Your task is to ensure a 3-level folder hierarchy exists in Google Drive and report the status.\n\n## Input Variables\n- companyName: {{$json.companyName}}\n- dateFolderName: {{$json.dateFolderName}}\n- internalFolderName: {{$json.internalFolderName}}\n\n## Required Folder Hierarchy\nn8n Demo > [companyName] > [dateFolderName] > [internalFolderName]\n\n## Steps to Execute\n\n**Step 1: Company Folder**\n- Search for folder named \"{{$json.companyName}}\" inside the \"n8n Demo\" folder (Folder ID: 1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT)\n- If exists: record folder ID and status \"existed\"\n- If not exists: create it inside \"n8n Demo\" (use parent folder ID: 1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT), record folder ID and status \"created\"\n\n**Step 2: Date Folder**\n- Search for folder named \"{{$json.dateFolderName}}\" inside the company folder from Step 1 (use the company folder ID as parent)\n- If exists: record folder ID and status \"existed\"\n- If not exists: create it inside the company folder, record folder ID and status \"created\"\n\n**Step 3: Internal Folder**\n- Search for folder named \"{{$json.internalFolderName}}\" inside the date folder from Step 2 (use the date folder ID as parent)\n- If exists: record folder ID and status \"existed\"\n- If not exists: create it inside the date folder, record folder ID and status \"created\"\n\n## Required Output Format\nProvide your response ONLY as valid JSON with no additional text:\n{\n  \"companyFolder\": {\n    \"name\": \"actual_folder_name\",\n    \"folderId\": \"folder_id\",\n    \"status\": \"existed or created\"\n  },\n  \"dateFolder\": {\n    \"name\": \"actual_folder_name\",\n    \"folderId\": \"folder_id\",\n    \"status\": \"existed or created\"\n  },\n  \"internalFolder\": {\n    \"name\": \"actual_folder_name\",\n    \"folderId\": \"folder_id\",\n    \"status\": \"existed or created\"\n  }\n}",
+        "options": {
+          "systemMessage": "You are a Google Drive folder management agent. Your role is to ensure folder hierarchies exist in Google Drive by searching for folders and creating them only when necessary.\n\nAlways follow these principles:\n- Search before creating to avoid duplicates\n- Maintain exact folder names as provided in inputs\n- Ensure folders are created in the correct parent folder hierarchy\n- Use the available Google Drive tools systematically\n- Provide clear, structured outputs with folder IDs and status\n- Be precise and methodical in your approach"
+        }
+      },
+      "id": "09db680c-a876-45ab-9a98-77393efe45dd",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1232,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "=Research completed for {{ $('Webhook').item.json.body.companyName }}",
+        "message": "=<h2>Task Completed Successfully</h2> <h3>Company:</h3> <h4>{{ $('Webhook').item.json.body.companyName }}</h4><hr> <h3>AI Agent Report folder:</h3> <h4>{{ $('set_fields9').item.json.internal_folder_url }}</h4>",
+        "options": {}
+      },
+      "id": "2cea7f4b-c4bb-477d-9beb-8cbd03bdf8e2",
+      "name": "Send Gmail Notification4",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2272,
+        752
+      ],
+      "webhookId": "7fa690a7-12fe-42e4-ae74-e144bbea27c1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a new folder in Google Drive.\nREQUIRED: Provide the folder name as a string (e.g., \"n8n Demo\", \"Infosys\", \"Content\").\nREQUIRED: Provide the parent folder ID where this folder should be created.\nIf parent folder ID is not known, search for it first using the Search tool.\nReturns the created folder's ID and name.",
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.companyName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT",
+          "mode": "list",
+          "cachedResultName": "n8n Demo",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        1376,
+        1200
+      ],
+      "id": "57b3b460-60eb-42ef-8d08-803c9434fbf5",
+      "name": "Create folder with Company Name1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a new folder in Google Drive.\nREQUIRED: Provide the folder name as a string (e.g., \"n8n Demo\", \"Infosys\", \"Content\").\nREQUIRED: Provide the parent folder ID where this folder should be created.\nIf parent folder ID is not known, search for it first using the Search tool.\nReturns the created folder's ID and name.",
+        "resource": "folder",
+        "name": "={{ $('Prepare Context').item.json.dateFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Parent_Folder', ``, 'string') }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        1536,
+        1200
+      ],
+      "id": "f0b72419-98ea-4dc0-a106-c9a9d13e63ec",
+      "name": "Create Date Folder2",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a new folder in Google Drive.\nREQUIRED: Provide the folder name as a string (e.g., \"n8n Demo\", \"Infosys\", \"Content\").\nREQUIRED: Provide the parent folder ID where this folder should be created.\nIf parent folder ID is not known, search for it first using the Search tool.\nReturns the created folder's ID and name.",
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.internalFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Parent_Folder', ``, 'string') }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        1696,
+        1200
+      ],
+      "id": "d162cf93-4744-41bc-933d-48fe8351e09b",
+      "name": "Create Internal Folder2",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.all();\nreturn inputData.map(item => {\n  let rawData = item.json;\n  \n  // Check if there's a specific field containing the JSON string\n  if (rawData.data) rawData = rawData.data;\n  if (rawData.output) rawData = rawData.output;\n  if (rawData.json) rawData = rawData.json;\n  \n  // Parse if string\n  if (typeof rawData === 'string') {\n    // Remove markdown code block syntax (```json and ```)\n    rawData = rawData.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n    \n    // Parse the cleaned JSON string\n    rawData = JSON.parse(rawData);\n  }\n  \n  return {\n    json: rawData\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        752
+      ],
+      "id": "e4f79a9b-40e0-4fee-87f5-93a1cfc4f066",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        752
+      ],
+      "id": "950e8e65-5bd5-491b-a4f1-e6674c3207a6",
+      "name": "CreateGoogleDoc3",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=Summary about {{ $('Webhook').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $('Webhook').item.json.body.htmlContent }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "={{ $json.internalFolder.folderId }}",
+              "type": "string"
+            },
+            {
+              "id": "741aebd4-01bd-426b-85f5-28042f98a807",
+              "name": "internal_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $json.internalFolder.folderId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        752
+      ],
+      "id": "aeee189b-b45f-4855-8822-438b90ea5bce",
+      "name": "set_fields9",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: [$input.first().json.drive_folder_id]\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1936,
+        752
+      ],
+      "id": "9e0dc850-0d2a-4a4f-9cae-3ec1bb814ca3",
+      "name": "Prepare_Request3"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders in Google Drive1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Notification4": {
+      "main": [
+        []
+      ]
+    },
+    "Create folder with Company Name1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Date Folder2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Internal Folder2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields9": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request3": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "set_fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc3": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Notification4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
