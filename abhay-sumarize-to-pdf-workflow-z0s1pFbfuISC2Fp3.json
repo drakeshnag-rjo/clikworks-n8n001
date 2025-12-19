@@ -1,0 +1,408 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Details Form",
+        "formDescription": "Thanks for filling the form, we'll get back to you soon",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "First Name"
+            },
+            {
+              "fieldLabel": "Last Name"
+            },
+            {
+              "fieldLabel": "Company Name"
+            },
+            {
+              "fieldLabel": "Company Email",
+              "fieldType": "email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -512,
+        256
+      ],
+      "id": "cb9e9a3d-4739-418c-8101-85601f26cf74",
+      "name": "On form submission",
+      "webhookId": "7a24e8ce-ceef-4c66-b8f6-ceabff530c7f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8da41ee3-4705-40d3-a66a-c13dd279cbfe",
+              "name": "Company Email",
+              "value": "={{ $json['Company Email'] }}",
+              "type": "string"
+            },
+            {
+              "id": "823caaff-380e-4b70-a271-88fba7100acd",
+              "name": "Company Domain",
+              "value": "={{ $json['Company Email'].extractDomain() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        256
+      ],
+      "id": "cbdc89dd-761e-42fa-8182-d538334593c4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=First Visit_website:http://{{ $json['Company Domain'] }} and crawl through the website.  \n1. Identify every person mentioned on the site who holds one of the following designations:\n   • Founder\n   • Co‑founder\n   • CEO\n2. Record each person’s name (if the name is shown) and the exact designation/role as it appears on the site. \n\nThen, using the information you gathered, write a concise summary(Key Points) about the company and what they provide (10‑15 lines).  \n   • Use clear headings.  \n   • Use bullet points where appropriate.  \n   • The summary should cover the company’s mission, core activities, community focus, and any notable founders or leaders you discovered.  \n\nOutput the list of people with designations first, followed by the formatted company summary.\n\nOutput everything in appropriate HTML tags.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -80,
+        256
+      ],
+      "id": "c9b68bc9-a025-438f-b5df-a88f98415848",
+      "name": "Basic LLM Chain",
+      "notes": "visit_website"
+    },
+    {
+      "parameters": {
+        "model": "groq/compound",
+        "options": {
+          "maxTokensToSample": 4096,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        464
+      ],
+      "id": "505f6b0e-e055-4f95-8c98-c789b77d9561",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "v3LO6WVa7NRdeiuD",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        48,
+        464
+      ],
+      "id": "6e4459bc-2c25-4878-897e-ce57e955c803",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "=Summary of {{ $('On form submission').item.json['Company Name'] }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT",
+          "mode": "list",
+          "cachedResultName": "n8n Demo",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT"
+        },
+        "options": {}
+      },
+      "id": "d09e195d-7e6f-43f6-b8fb-0b738b4c6f47",
+      "name": "Archiving PDF File",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        1040,
+        256
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "id": "33ca08ee-acc0-47f2-8e51-a85af20c63ad",
+      "name": "Convert document to PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        848,
+        256
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Summary of  {{ $('On form submission').item.json['Company Name'] }}",
+        "message": "=Hi <b>Bharat</b>,<br>\n<br>\n<b>{{ $('On form submission').item.json['First Name'] }} {{ $('On form submission').item.json['Last Name'] }}</b> has filled the form. <br>You can review information about the organization here: {{ $json.webViewLink }} or by referring to the attached PDF.<br>\n<br>\nRegards,<br>\n<b>Abhay</b>.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1232,
+        256
+      ],
+      "id": "af57735b-18fd-40ba-99d3-8f80573e4a8e",
+      "name": "Send a message1",
+      "webhookId": "30965499-ca1f-429c-b5f6-497c253b4c33",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ln8Z15CmHHSeIAPs",
+          "name": "Abhay Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        256
+      ],
+      "id": "f2f0adc4-b9ac-47a7-884c-7838fba6aea0",
+      "name": "CreateGoogleDoc1",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=testfile",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $('Basic LLM Chain').item.json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "1qFasd7qnWYMG5DuH9_QL6z47RJszAJRX",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        256
+      ],
+      "id": "54239649-f46e-46c5-9edc-97f41eb657c9",
+      "name": "set_fields",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: $input.first().json.drive_folder_id\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        256
+      ],
+      "id": "4224e487-d7fd-497a-9b49-752fe4817e05",
+      "name": "Prepare_Request1"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "set_fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archiving PDF File": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert document to PDF": {
+      "main": [
+        [
+          {
+            "node": "Archiving PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request1": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc1": {
+      "main": [
+        [
+          {
+            "node": "Convert document to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
