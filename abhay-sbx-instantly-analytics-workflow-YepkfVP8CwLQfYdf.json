@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "a6000980-d30a-4bab-a438-efbdc9523660",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2678c0f2-bb47-4f91-a714-253c8c184f9c",
+      "name": "Webhook",
+      "webhookId": "a6000980-d30a-4bab-a438-efbdc9523660"
+    },
+    {
+      "parameters": {
+        "sendTo": "bharat.devana@infiniteskills.in,7797mta@gmail.com",
+        "subject": "🎉 Positive reply received-SBX",
+        "message": "={{ $json.body.a }}",
+        "options": {
+          "bccList": "abhayaanjaneyulup@gmail.com",
+          "senderName": "Notifications"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "99dd38ba-f8c6-4bd1-aa29-e1106d97a244",
+      "name": "Send a message",
+      "webhookId": "fd3201c7-ff1f-4384-a365-d89002104cfa",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J9RLg0njQaJJ4Pdd",
+          "name": "Abhay-Notifications-SBX Acc."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
