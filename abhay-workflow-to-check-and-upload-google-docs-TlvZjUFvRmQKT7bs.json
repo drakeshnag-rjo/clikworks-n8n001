@@ -1,0 +1,2584 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "01d3873d-f486-4094-a3ea-9e34ecedb02e",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -928,
+        160
+      ],
+      "id": "e25d7aaa-5b05-40f0-a1fe-2217852d0cd6",
+      "name": "Webhook",
+      "webhookId": "01d3873d-f486-4094-a3ea-9e34ecedb02e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6cc8ea10-cfc5-499d-be87-f559f8600ca5",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "73cd0e7c-d3a8-4fea-b16a-cefbd5d83fb3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        160
+      ],
+      "id": "6180fc04-1c73-4a9c-8a0a-fdb23ff7360a",
+      "name": "Current Date"
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.currentDate }}",
+        "format": "MM-dd-yyyy",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        160
+      ],
+      "id": "ccf1fe4b-139d-4fd3-aef2-5832d9283df0",
+      "name": "Formatted Date"
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "=New Folder Created Today",
+        "message": "=Hi <br>\n<br>\nFolder URL: {{ $json.Today_folder_url }}\n<br>\nRegards,<br>\n<b>N8N</b>.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2528,
+        272
+      ],
+      "id": "cd964063-8c3c-4a20-beb3-bbad9888f942",
+      "name": "Send a message",
+      "webhookId": "30965499-ca1f-429c-b5f6-497c253b4c33",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6cc8ea10-cfc5-499d-be87-f559f8600ca5",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -240
+      ],
+      "id": "a39b9c53-055c-4a07-ab71-445389b6e156",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "Company_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Company Folder').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ea5fd530-830d-4b6c-a9dc-fe70986f7139",
+              "name": "Document URL",
+              "value": "=https://docs.google.com/document/d/{{ $json.documentId }}/view",
+              "type": "string"
+            },
+            {
+              "id": "d41fc686-bc2e-4e64-900b-b6f2347fb1f7",
+              "name": "Final_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create Internal folder').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c9e23c2a-4fee-4ca5-b083-6b1dbcb31235",
+              "name": "Today_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Company Folder with Date').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2608,
+        -64
+      ],
+      "id": "a4d1c4b1-5e93-4aaf-8f4c-1d0c43b1052c",
+      "name": "set_fields2",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "=File Uploaded in the Existing Folder",
+        "message": "=Hi <br>\n<br>\nFolder URL: {{ $json['Folder URL'] }}\n<br>\nRegards,<br>\n<b>N8N</b>.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2752,
+        -432
+      ],
+      "id": "39f67dc7-c5e8-4524-ab5a-99ef2812c5cf",
+      "name": "Send a message3",
+      "webhookId": "30965499-ca1f-429c-b5f6-497c253b4c33",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "=New Folder Created",
+        "message": "=Hi <br>\n<br>\nFolder URL: {{ $json['Folder URL'] }}\n<br>\nRegards,<br>\n<b>N8N</b>.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2800,
+        -64
+      ],
+      "id": "04396357-d55f-4b55-8eef-c6b493f1db56",
+      "name": "Send a message1",
+      "webhookId": "30965499-ca1f-429c-b5f6-497c253b4c33",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.companyName }} {{ $('Formatted Date').item.json.formattedDate }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Search for Company Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        688,
+        272
+      ],
+      "id": "09e30c72-5e06-492c-a433-302bbacfd0c1",
+      "name": "Create folder with Date",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.internalFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        912,
+        272
+      ],
+      "id": "9046c4da-d52c-4c99-8bad-f74a83a3b6f4",
+      "name": "Create Internal folder 2",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.internalFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Search for Company Folder with Date').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        -64
+      ],
+      "id": "cdebbf54-3bb5-4078-bcc1-56219f914f9b",
+      "name": "Create Internal folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bfa59469-d5fa-4fa0-bffb-f74f58b36bbf",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        160
+      ],
+      "id": "e93e1873-27e0-4852-b633-2f69fdf988ca",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.companyName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT",
+          "mode": "list",
+          "cachedResultName": "n8n Demo",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        272,
+        608
+      ],
+      "id": "b079aa24-cdb3-4272-83f6-8466a5195685",
+      "name": "Create folder with Company Name",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "=New Company Folder Created",
+        "message": "=Hi <br>\n<br>\nFolder URL: {{ $json['Folder URL'] }}\n<br>\nRegards,<br>\n<b>N8N</b>.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2432,
+        608
+      ],
+      "id": "d2313ab4-27db-4799-956a-36c45af955a4",
+      "name": "Send a message4",
+      "webhookId": "30965499-ca1f-429c-b5f6-497c253b4c33",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.companyName }} {{ $('Formatted Date').item.json.formattedDate }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        496,
+        608
+      ],
+      "id": "cd4c6ddf-89a7-4596-afc8-6894e258b396",
+      "name": "Create folder with Date1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Webhook').item.json.body.companyName }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT",
+            "mode": "list",
+            "cachedResultName": "n8n Demo",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        160
+      ],
+      "id": "eeff0947-0541-450c-859a-f021df7a6621",
+      "name": "Search for Company Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Webhook').item.json.body.companyName }} {{ $('Formatted Date').item.json.formattedDate }}",
+        "returnAll": true,
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d4b3f3db-0bea-416b-9605-2e87ab6e589e",
+      "name": "Search for Company Folder with Date",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Webhook').item.json.body.internalFolderName }}",
+        "returnAll": true,
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        672,
+        -240
+      ],
+      "id": "02292aa4-7dc3-4f00-9813-1590733663f0",
+      "name": "Search for Internal Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "Company_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Company Folder').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ea5fd530-830d-4b6c-a9dc-fe70986f7139",
+              "name": "Document_url",
+              "value": "=https://docs.google.com/document/d/{{ $json.documentId }}/view",
+              "type": "string"
+            },
+            {
+              "id": "d41fc686-bc2e-4e64-900b-b6f2347fb1f7",
+              "name": "Final_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create Internal folder 2').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c9e23c2a-4fee-4ca5-b083-6b1dbcb31235",
+              "name": "Today_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create folder with Date').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2320,
+        272
+      ],
+      "id": "d911b344-c889-4339-a6fa-66be63217105",
+      "name": "set_fields6",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "9fc03bea-167b-4824-aa88-28a2685eb5f5",
+              "name": "Company_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Company Folder').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ea5fd530-830d-4b6c-a9dc-fe70986f7139",
+              "name": "Document URL",
+              "value": "=https://docs.google.com/document/d/{{ $json.documentId }}/view",
+              "type": "string"
+            },
+            {
+              "id": "d41fc686-bc2e-4e64-900b-b6f2347fb1f7",
+              "name": "Final_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Internal Folder').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c9e23c2a-4fee-4ca5-b083-6b1dbcb31235",
+              "name": "Today_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Search for Company Folder with Date').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2544,
+        -432
+      ],
+      "id": "ab0efdc2-347b-45f6-812c-64e679c23f8e",
+      "name": "set_fields7",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "Company_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create folder with Company Name').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ea5fd530-830d-4b6c-a9dc-fe70986f7139",
+              "name": "Document URL",
+              "value": "=https://docs.google.com/document/d/{{ $json.id }}/view",
+              "type": "string"
+            },
+            {
+              "id": "d41fc686-bc2e-4e64-900b-b6f2347fb1f7",
+              "name": "Final_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create Internal folder 1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c9e23c2a-4fee-4ca5-b083-6b1dbcb31235",
+              "name": "Today_folder_url",
+              "value": "=https://drive.google.com/drive/folders/{{ $('Create folder with Company Name').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2224,
+        608
+      ],
+      "id": "16a4498f-cb28-4d8c-b690-dd6a44740c84",
+      "name": "set_fields",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        896,
+        816
+      ],
+      "id": "53510fa6-ffad-490f-9765-2320042b177d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=First find and Visit_website using the given compay name \"{{ $('Webhook').item.json.body.companyName }}\" and crawl through the website.  \n1. Identify every person mentioned on the site who holds one of the following designations:\n   • Founder\n   • Co‑founder\n   • CEO\n2. Record each person’s name (if the name is shown) and the exact designation/role as it appears on the site. \n\nThen, using the information you gathered, write a concise summary(Key Points) about the company and what they provide (10‑15 lines).  \n   • Use clear headings.  \n   • Use bullet points where appropriate.  \n   • The summary should cover the company’s mission, core activities, community focus, and any notable founders or leaders you discovered.  \n\nOutput the list of people with designations first, followed by the formatted company summary.\n\nOutput everything in appropriate markdown format.\n\nDo Not output \"People & Designations\" Section if \"not found\".",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        896,
+        608
+      ],
+      "id": "4ff0f74a-018f-4d53-b3ef-a842d349b6ae",
+      "name": "Basic LLM Chain1",
+      "notes": "visit_website"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        608
+      ],
+      "id": "6a0b2d12-f28f-49db-a4ce-fa32a4897f57",
+      "name": "CreateGoogleDoc1",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=Summary of {{ $('Webhook').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "={{ $('Create Internal folder 1').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        608
+      ],
+      "id": "e45d05f3-6f87-4654-9c5f-4a15d5d8eb8b",
+      "name": "set_fields4",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: [$input.first().json.drive_folder_id]\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        608
+      ],
+      "id": "ee8cf942-fbb4-486d-80a4-1c2d80ad3da6",
+      "name": "Prepare_Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $input.first().json.text;\n\n// Simple markdown to HTML converter\nconst htmlContent = markdown\n  .replace(/^# (.*?)$/gm, '<h1>$1</h1>')\n  .replace(/^## (.*?)$/gm, '<h2>$1</h2>')\n  .replace(/^### (.*?)$/gm, '<h3>$1</h3>')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/__(.*?)__/g, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n  .replace(/_(.*?)_/g, '<em>$1</em>')\n  .replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href=\"$2\">$1</a>')\n  .replace(/^- (.*?)$/gm, '<li>$1</li>')\n  .replace(/(<li>.*?<\\/li>)/s, '<ul>$1</ul>')\n  .replace(/\\n\\n/g, '</p><p>')\n  .replace(/^(?!<[^>]*>)/gm, '<p>')\n  .replace(/$/gm, (match, offset, str) => {\n    if (!str[offset + 1] || str[offset + 1] === '\\n') return '</p>';\n    return match;\n  });\n\nreturn { text: htmlContent };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        608
+      ],
+      "id": "99ca4e72-8cc7-4e2c-82e3-89d1e98cf7f5",
+      "name": "Convert Md to HTML1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        480
+      ],
+      "id": "37a60ea5-25f7-4b13-b4bb-84387693b5b6",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=First find and Visit_website using the given compay name \"{{ $('Webhook').item.json.body.companyName }}\" and crawl through the website.  \n1. Identify every person mentioned on the site who holds one of the following designations:\n   • Founder\n   • Co‑founder\n   • CEO\n2. Record each person’s name (if the name is shown) and the exact designation/role as it appears on the site. \n\nThen, using the information you gathered, write a concise summary(Key Points) about the company and what they provide (10‑15 lines).  \n   • Use clear headings.  \n   • Use bullet points where appropriate.  \n   • The summary should cover the company’s mission, core activities, community focus, and any notable founders or leaders you discovered.  \n\nOutput the list of people with designations first, followed by the formatted company summary.\n\nOutput everything in appropriate markdown format.\n\nDo Not output \"People & Designations\" Section if \"not found\".",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1088,
+        272
+      ],
+      "id": "08527b6d-fc71-476e-9741-d00bde6818ca",
+      "name": "Basic LLM Chain2",
+      "notes": "visit_website"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        272
+      ],
+      "id": "fe6a135c-5e08-45d2-aad7-ba5ecc05edde",
+      "name": "CreateGoogleDoc2",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=Summary of {{ $('Webhook').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "={{ $('Create Internal folder 2').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        272
+      ],
+      "id": "78d30118-4277-4acf-bba0-f33426e7d1f2",
+      "name": "set_fields8",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: [$input.first().json.drive_folder_id]\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        272
+      ],
+      "id": "cc8a859d-3f51-4bdd-9a90-b2f864beb7d9",
+      "name": "Prepare_Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $input.first().json.text;\n\n// Simple markdown to HTML converter\nconst htmlContent = markdown\n  .replace(/^# (.*?)$/gm, '<h1>$1</h1>')\n  .replace(/^## (.*?)$/gm, '<h2>$1</h2>')\n  .replace(/^### (.*?)$/gm, '<h3>$1</h3>')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/__(.*?)__/g, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n  .replace(/_(.*?)_/g, '<em>$1</em>')\n  .replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href=\"$2\">$1</a>')\n  .replace(/^- (.*?)$/gm, '<li>$1</li>')\n  .replace(/(<li>.*?<\\/li>)/s, '<ul>$1</ul>')\n  .replace(/\\n\\n/g, '</p><p>')\n  .replace(/^(?!<[^>]*>)/gm, '<p>')\n  .replace(/$/gm, (match, offset, str) => {\n    if (!str[offset + 1] || str[offset + 1] === '\\n') return '</p>';\n    return match;\n  });\n\nreturn { text: htmlContent };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        272
+      ],
+      "id": "5d335ff0-f9b5-4419-950d-3aa5b1b4b4cd",
+      "name": "Convert Md to HTML2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        144
+      ],
+      "id": "2677b2a4-3899-421b-af36-9ca9918cea2b",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=First find and Visit_website using the given compay name \"{{ $('Webhook').item.json.body.companyName }}\" and crawl through the website.  \n1. Identify every person mentioned on the site who holds one of the following designations:\n   • Founder\n   • Co‑founder\n   • CEO\n2. Record each person’s name (if the name is shown) and the exact designation/role as it appears on the site. \n\nThen, using the information you gathered, write a concise summary(Key Points) about the company and what they provide (10‑15 lines).  \n   • Use clear headings.  \n   • Use bullet points where appropriate.  \n   • The summary should cover the company’s mission, core activities, community focus, and any notable founders or leaders you discovered.  \n\nOutput the list of people with designations first, followed by the formatted company summary.\n\nOutput everything in appropriate markdown format.\n\nDo Not output \"People & Designations\" Section if \"not found\".",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1312,
+        -64
+      ],
+      "id": "b572b56d-cb34-4813-8866-70261270701e",
+      "name": "Basic LLM Chain3",
+      "notes": "visit_website"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2432,
+        -64
+      ],
+      "id": "2400f3c3-12cd-4c68-854c-1b2cd77eb8b8",
+      "name": "CreateGoogleDoc3",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=Summary of {{ $('Webhook').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "={{ $('Create Internal folder').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        -64
+      ],
+      "id": "a827089f-6caf-4dca-b7a7-43276e2c8542",
+      "name": "set_fields9",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: [$input.first().json.drive_folder_id]\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        -64
+      ],
+      "id": "6afc869c-53a0-4ab8-a26e-defb07ddf238",
+      "name": "Prepare_Request3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $input.first().json.text;\n\n// Simple markdown to HTML converter\nconst htmlContent = markdown\n  .replace(/^# (.*?)$/gm, '<h1>$1</h1>')\n  .replace(/^## (.*?)$/gm, '<h2>$1</h2>')\n  .replace(/^### (.*?)$/gm, '<h3>$1</h3>')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/__(.*?)__/g, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n  .replace(/_(.*?)_/g, '<em>$1</em>')\n  .replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href=\"$2\">$1</a>')\n  .replace(/^- (.*?)$/gm, '<li>$1</li>')\n  .replace(/(<li>.*?<\\/li>)/s, '<ul>$1</ul>')\n  .replace(/\\n\\n/g, '</p><p>')\n  .replace(/^(?!<[^>]*>)/gm, '<p>')\n  .replace(/$/gm, (match, offset, str) => {\n    if (!str[offset + 1] || str[offset + 1] === '\\n') return '</p>';\n    return match;\n  });\n\nreturn { text: htmlContent };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -64
+      ],
+      "id": "e27e0995-5176-4a95-bd5b-5ae153e6334b",
+      "name": "Convert Md to HTML3"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook').item.json.body.internalFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        720,
+        608
+      ],
+      "id": "592dff54-29d2-462a-8239-0ef4c226f116",
+      "name": "Create Internal folder 1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        -224
+      ],
+      "id": "df6650a4-302f-4c29-8747-5eec7b67d21a",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=First find and Visit_website using the given compay name \"{{ $('Webhook').item.json.body.companyName }}\" and crawl through the website.  \n1. Identify every person mentioned on the site who holds one of the following designations:\n   • Founder\n   • Co‑founder\n   • CEO\n2. Record each person’s name (if the name is shown) and the exact designation/role as it appears on the site. \n\nThen, using the information you gathered, write a concise summary(Key Points) about the company and what they provide (10‑15 lines).  \n   • Use clear headings.  \n   • Use bullet points where appropriate.  \n   • The summary should cover the company’s mission, core activities, community focus, and any notable founders or leaders you discovered.  \n\nOutput the list of people with designations first, followed by the formatted company summary.\n\nOutput everything in appropriate markdown format.\n\nDo Not output \"People & Designations\" Section if \"not found\".",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1216,
+        -432
+      ],
+      "id": "f5f78af5-0709-4c00-a68a-c675c343056a",
+      "name": "Basic LLM Chain4",
+      "notes": "visit_website"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "multipart/related; boundary=divider",
+        "body": "={{ $json.rawData }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2336,
+        -432
+      ],
+      "id": "87d0657f-1b90-4a99-b573-b4e0b96f17d4",
+      "name": "CreateGoogleDoc4",
+      "notesInFlow": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7ee03ac-13e3-4fca-a7bc-57c8fc56dc42",
+              "name": "document_name",
+              "value": "=Summary of {{ $('Webhook').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "48a07ef2-ae46-4bfc-aa7e-d92a74ef46d6",
+              "name": "html_content",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "22b02fba-ba72-423a-b92f-1191a183a554",
+              "name": "drive_folder_id",
+              "value": "={{ $('Search for Internal Folder').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1824,
+        -432
+      ],
+      "id": "113960ad-c8ae-4f5f-ad30-35df61db01cb",
+      "name": "set_fields10",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const boundary = 'divider';\nconst docName = $input.first().json.document_name;\nconst folderId = $input.first().json.drive_folder_id;\nconst htmlContent = $input.first().json.html_content;\n\nconst metadata = JSON.stringify({\n  name: docName,\n  mimeType: \"application/vnd.google-apps.document\",\n  parents: [$input.first().json.drive_folder_id]\n});\n\nconst htmlWithStyles = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* Add bottom margin to block elements for spacing */\n    p,\n    ul,\n    ol,\n    table,\n    h1,\n    h2,\n    h3,\n    h4,\n    h5,\n    h6 {\n      margin-bottom: 10pt;\n    }\n\n    h2 {\n      margin-top: 20pt;\n    }\n\n    /* Prevent margin collapse issues or excessive space inside lists */\n    li {\n       margin-bottom: 2pt; /* Optional: small space between list items */\n    }\n\n    /* Remove margin from the last child within common containers if needed */\n    /* This might be overly aggressive, test without it first */\n    /*\n    body > *:last-child,\n    li > *:last-child {\n       margin-bottom: 0;\n    }\n    */\n  </style>\n</head>\n<body>\n  ${htmlContent}\n</body>\n</html>\n`;\n\n// Construct the body with literal \\r\\n ONLY\nlet body = `--${boundary}\\r\\n`;\nbody += `Content-Type: application/json; charset=UTF-8\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${metadata}\\r\\n`;\nbody += `--${boundary}\\r\\n`;\nbody += `Content-Type: text/html\\r\\n`;\nbody += `\\r\\n`; // Blank line\nbody += `${htmlWithStyles}\\r\\n`; // Add the HTML content\nbody += `--${boundary}--\\r\\n`; // Final boundary\n\nreturn {\n  rawData: body \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -432
+      ],
+      "id": "1386528e-3412-472d-9aa9-b519dd8aaba0",
+      "name": "Prepare_Request4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $input.first().json.text;\n\n// Simple markdown to HTML converter\nconst htmlContent = markdown\n  .replace(/^# (.*?)$/gm, '<h1>$1</h1>')\n  .replace(/^## (.*?)$/gm, '<h2>$1</h2>')\n  .replace(/^### (.*?)$/gm, '<h3>$1</h3>')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/__(.*?)__/g, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n  .replace(/_(.*?)_/g, '<em>$1</em>')\n  .replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href=\"$2\">$1</a>')\n  .replace(/^- (.*?)$/gm, '<li>$1</li>')\n  .replace(/(<li>.*?<\\/li>)/s, '<ul>$1</ul>')\n  .replace(/\\n\\n/g, '</p><p>')\n  .replace(/^(?!<[^>]*>)/gm, '<p>')\n  .replace(/$/gm, (match, offset, str) => {\n    if (!str[offset + 1] || str[offset + 1] === '\\n') return '</p>';\n    return match;\n  });\n\nreturn { text: htmlContent };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        -432
+      ],
+      "id": "8b52677c-6335-444e-87ec-9e3373deb01a",
+      "name": "Convert Md to HTML4"
+    },
+    {
+      "parameters": {
+        "path": "eefeca84-2aa3-4b34-8ccb-e71a2afe3c32",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1200,
+        608
+      ],
+      "id": "c91b7fab-efe7-417f-a9c4-090a9eb5a71b",
+      "name": "Webhook1",
+      "webhookId": "eefeca84-2aa3-4b34-8ccb-e71a2afe3c32"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "n8n Demo",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "mode": "list",
+            "value": "root",
+            "cachedResultName": "/ (Root folder)"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "id": "9c7b3d64-22f3-496f-9518-e7704be67d79",
+      "name": "Check n8n Demo Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1408,
+        1344
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "45010f3a-01fe-4701-b7ff-0e11c3e53a81",
+      "name": "Root Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1216,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "n8n Demo",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "id": "9dff4394-6e27-4ef6-8639-f92626d9e04a",
+      "name": "Create n8n Demo Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1008,
+        1488
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Webhook').item.json.body.companyName }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT",
+            "mode": "list",
+            "cachedResultName": "n8n Demo",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1Hm4jTaxR8lXVRij9agPB5BSc8vmPIUlT"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "id": "7992d2a9-cd9a-4751-b350-4d4873ca2716",
+      "name": "Check Company Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -608,
+        1344
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "4d374e32-d696-4285-8d2f-84bd894e884a",
+      "name": "Company Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Webhook Trigger').item.json.body.companyName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Set Root Folder ID').item.json.rootFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "04a0dc44-849e-49de-a44f-579089e96f1e",
+      "name": "Create Company Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -208,
+        1488
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\nconst month = String(today.getMonth() + 1).padStart(2, '0');\nconst day = String(today.getDate()).padStart(2, '0');\nconst year = today.getFullYear();\nconst companyName = $input.item.json.body.companyName;\nconst dateFolder = `${companyName} ${month}-${day}-${year}`;\n\nreturn {\n  dateFolderName: dateFolder,\n  companyFolderId: $('Set Company Folder ID').item.json.companyFolderId,\n  rootFolderId: $('Set Root Folder ID').item.json.rootFolderId,\n  internalFolderName: $input.item.json.body.internalFolderName,\n  companyName: companyName,\n  foldersCreated: $('Set Company Folder ID').item.json.foldersCreated || []\n};"
+      },
+      "id": "78c016d1-eb08-4f74-a8cc-799b81d38614",
+      "name": "Prepare Date Folder Name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Prepare Date Folder Name').item.json.dateFolderName }}",
+        "filter": {},
+        "options": {}
+      },
+      "id": "282889f6-7d82-42d6-ada4-5b48c84e9185",
+      "name": "Check Date Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        384,
+        1344
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.files.length }}",
+              "operation": "larger"
+            }
+          ]
+        }
+      },
+      "id": "8e1eba00-fbc2-44c2-898c-3227f0c6c58f",
+      "name": "Date Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        592,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Prepare Date Folder Name').item.json.dateFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Prepare Date Folder Name').item.json.companyFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "981b24fd-2811-4ab7-8dca-b7b2c4ef58ba",
+      "name": "Create Date Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        784,
+        1488
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "Internal Folder",
+        "filter": {
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "id": "faf51c0c-c9e8-429b-b74d-01c52caa43f4",
+      "name": "Check Internal Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1184,
+        1344
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.files.length }}",
+              "operation": "larger"
+            }
+          ]
+        }
+      },
+      "id": "5bce3238-699c-4b9c-b62c-0cb91db99169",
+      "name": "Internal Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Prepare Date Folder Name').item.json.internalFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Set Date Folder ID').item.json.dateFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "435f84cd-76ce-4317-b11c-e221ceb1c60d",
+      "name": "Create Internal Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1584,
+        1488
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5602942a-ddff-4930-a007-097963718dee",
+      "name": "LLM Company Research",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        1568
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $input.item.json.response;\nconst companyName = $('Prepare Date Folder Name').item.json.companyName;\n\n// Simple markdown to HTML conversion\nlet html = markdown\n  .replace(/^### (.*$)/gim, '<h3>$1</h3>')\n  .replace(/^## (.*$)/gim, '<h2>$1</h2>')\n  .replace(/^# (.*$)/gim, '<h1>$1</h1>')\n  .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/\\*(.+?)\\*/g, '<em>$1</em>')\n  .replace(/^\\* (.+)$/gim, '<li>$1</li>')\n  .replace(/^- (.+)$/gim, '<li>$1</li>')\n  .replace(/\\n\\n/g, '</p><p>')\n  .replace(/<li>/g, '<ul><li>')\n  .replace(/<\\/li>\\n(?!<li>)/g, '</li></ul>');\n\nhtml = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <title>${companyName} - Company Research</title>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }\n    h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }\n    h2 { color: #34495e; margin-top: 20px; }\n    h3 { color: #7f8c8d; }\n    ul { margin: 10px 0; padding-left: 30px; }\n  </style>\n</head>\n<body>\n  <h1>${companyName} - Company Research</h1>\n  <p>${html}</p>\n</body>\n</html>`;\n\nreturn {\n  html: html,\n  internalFolderId: $('Set Internal Folder ID').item.json.internalFolderId,\n  companyName: companyName,\n  foldersCreated: $('Set Internal Folder ID').item.json.foldersCreated\n};"
+      },
+      "id": "8784d4e5-47d7-4e58-a781-68a40d6bd56a",
+      "name": "Convert Markdown to HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.companyName }} - Research Report.html",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.internalFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "fad84af8-bc05-4f83-aff8-7d01ec29b623",
+      "name": "Upload HTML as Google Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2592,
+        1344
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "SgZOSueq4vQJBiff",
+          "name": "Abhay-Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const foldersCreated = $input.item.json.foldersCreated || [];\nconst companyName = $input.item.json.companyName;\nconst docName = `${companyName} - Research Report`;\n\nlet subject = '';\nlet body = '';\n\nif (foldersCreated.length === 0) {\n  subject = `[n8n] Document uploaded - All folders existed for ${companyName}`;\n  body = `<p>The research document \"${docName}\" has been successfully uploaded.</p>\n         <p><strong>Folder Status:</strong> All required folders already existed.</p>`;\n} else if (foldersCreated.length === 1) {\n  subject = `[n8n] Document uploaded - Created folder: ${foldersCreated[0]}`;\n  body = `<p>The research document \"${docName}\" has been successfully uploaded.</p>\n         <p><strong>Folder Created:</strong> ${foldersCreated[0]}</p>`;\n} else {\n  subject = `[n8n] Document uploaded - Created ${foldersCreated.length} folders for ${companyName}`;\n  body = `<p>The research document \"${docName}\" has been successfully uploaded.</p>\n         <p><strong>Folders Created:</strong></p><ul>${foldersCreated.map(f => '<li>' + f + '</li>').join('')}</ul>`;\n}\n\nbody += `<p><strong>Document Location:</strong> n8n Demo > ${companyName} > [Date Folder] > [Internal Folder]</p>\n        <p>Workflow completed successfully at ${new Date().toLocaleString()}.</p>`;\n\nreturn {\n  subject: subject,\n  body: body,\n  webLink: $input.item.json.webViewLink\n};"
+      },
+      "id": "2960413d-11a8-47b0-88d8-d93e1a030994",
+      "name": "Prepare Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}\n<p><a href=\"{{ $json.webLink }}\">View Document</a></p>",
+        "options": {}
+      },
+      "id": "1310d707-0421-436d-8524-a3f438c7656c",
+      "name": "Send Gmail Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2992,
+        1344
+      ],
+      "webhookId": "0d0c6d01-4944-4bdd-ad1f-45eb60f8c84a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Document created successfully\", \"documentLink\": $json.webViewLink } }}",
+        "options": {}
+      },
+      "id": "c4c1e538-be10-4ea1-91f8-b76d35c2281d",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rootFolderId = $input.item.json.files && $input.item.json.files.length > 0 \n  ? $input.item.json.files[0].id \n  : $input.item.json.id;\n\nreturn {\n  rootFolderId: rootFolderId,\n  foldersCreated: $input.item.json.name ? ['n8n Demo'] : []\n};"
+      },
+      "id": "3094b1ff-18ca-41d1-9542-8c98495a5936",
+      "name": "Set Root Folder ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyFolderId = $input.item.json.files && $input.item.json.files.length > 0 \n  ? $input.item.json.files[0].id \n  : $input.item.json.id;\n\nconst previousFolders = $('Set Root Folder ID').item.json.foldersCreated || [];\nconst newFolders = $input.item.json.name ? [...previousFolders, $input.item.json.name] : previousFolders;\n\nreturn {\n  companyFolderId: companyFolderId,\n  foldersCreated: newFolders\n};"
+      },
+      "id": "8674a35e-8175-4d11-ba4b-45317b1a7b8f",
+      "name": "Set Company Folder ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const dateFolderId = $input.item.json.files && $input.item.json.files.length > 0 \n  ? $input.item.json.files[0].id \n  : $input.item.json.id;\n\nconst previousFolders = $('Prepare Date Folder Name').item.json.foldersCreated || [];\nconst newFolders = $input.item.json.name ? [...previousFolders, $input.item.json.name] : previousFolders;\n\nreturn {\n  dateFolderId: dateFolderId,\n  foldersCreated: newFolders,\n  internalFolderName: $('Prepare Date Folder Name').item.json.internalFolderName\n};"
+      },
+      "id": "8e50a75f-a73c-4495-9281-736b1791862a",
+      "name": "Set Date Folder ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const internalFolderId = $input.item.json.files && $input.item.json.files.length > 0 \n  ? $input.item.json.files[0].id \n  : $input.item.json.id;\n\nconst previousFolders = $('Set Date Folder ID').item.json.foldersCreated || [];\nconst newFolders = $input.item.json.name ? [...previousFolders, $input.item.json.name] : previousFolders;\n\nreturn {\n  internalFolderId: internalFolderId,\n  foldersCreated: newFolders\n};"
+      },
+      "id": "5d424886-19dd-415d-8bc9-9c8060ca02ba",
+      "name": "Set Internal Folder ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Research the company \"{{ $('Webhook Trigger').item.json.body.companyName }}\" and provide:\n\n1. Founder(s) name(s)\n2. Current CEO name\n3. A 10-15 line summary covering:\n   - Company mission\n   - Main activities and products/services\n   - Key information about leadership\n\nFormat the response in markdown with clear sections. Be concise and factual.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2048,
+        1344
+      ],
+      "id": "3f6454d4-0dd7-4fff-9a31-6f315b449bdb",
+      "name": "Basic LLM Chain"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Current Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Search for Internal Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create folder with Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Date": {
+      "main": [
+        [
+          {
+            "node": "Formatted Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatted Date": {
+      "main": [
+        [
+          {
+            "node": "Search for Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Internal folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields2": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder with Date": {
+      "main": [
+        [
+          {
+            "node": "Create Internal folder 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Internal folder 2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Internal folder": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Search for Company Folder with Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create folder with Company Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder with Company Name": {
+      "main": [
+        [
+          {
+            "node": "Create folder with Date1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder with Date1": {
+      "main": [
+        [
+          {
+            "node": "Create Internal folder 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Company Folder": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Company Folder with Date": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Internal Folder": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields6": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields7": {
+      "main": [
+        [
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Convert Md to HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields4": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request1": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Md to HTML1": {
+      "main": [
+        [
+          {
+            "node": "set_fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc1": {
+      "main": [
+        [
+          {
+            "node": "set_fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Convert Md to HTML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields8": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request2": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Md to HTML2": {
+      "main": [
+        [
+          {
+            "node": "set_fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc2": {
+      "main": [
+        [
+          {
+            "node": "set_fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain3": {
+      "main": [
+        [
+          {
+            "node": "Convert Md to HTML3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields9": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request3": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Md to HTML3": {
+      "main": [
+        [
+          {
+            "node": "set_fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Internal folder 1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc3": {
+      "main": [
+        [
+          {
+            "node": "set_fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain4": {
+      "main": [
+        [
+          {
+            "node": "Convert Md to HTML4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_fields10": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Request4": {
+      "main": [
+        [
+          {
+            "node": "CreateGoogleDoc4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Md to HTML4": {
+      "main": [
+        [
+          {
+            "node": "set_fields10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreateGoogleDoc4": {
+      "main": [
+        [
+          {
+            "node": "set_fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check n8n Demo Folder": {
+      "main": [
+        [
+          {
+            "node": "Root Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Root Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Set Root Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create n8n Demo Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create n8n Demo Folder": {
+      "main": [
+        [
+          {
+            "node": "Set Root Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Company Folder": {
+      "main": [
+        [
+          {
+            "node": "Company Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Set Company Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Company Folder": {
+      "main": [
+        [
+          {
+            "node": "Set Company Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Date Folder Name": {
+      "main": [
+        [
+          {
+            "node": "Check Date Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Date Folder": {
+      "main": [
+        [
+          {
+            "node": "Date Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Set Date Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Date Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Date Folder": {
+      "main": [
+        [
+          {
+            "node": "Set Date Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Internal Folder": {
+      "main": [
+        [
+          {
+            "node": "Internal Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internal Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Set Internal Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Internal Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Internal Folder": {
+      "main": [
+        [
+          {
+            "node": "Set Internal Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Company Research": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Markdown to HTML": {
+      "main": [
+        [
+          {
+            "node": "Upload HTML as Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload HTML as Google Doc": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Root Folder ID": {
+      "main": [
+        [
+          {
+            "node": "Check Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Company Folder ID": {
+      "main": [
+        [
+          {
+            "node": "Prepare Date Folder Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Folder ID": {
+      "main": [
+        [
+          {
+            "node": "Check Internal Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Internal Folder ID": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Convert Markdown to HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
