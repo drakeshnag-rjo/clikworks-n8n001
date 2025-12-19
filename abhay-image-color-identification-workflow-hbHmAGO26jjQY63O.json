@@ -1,0 +1,249 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "You are analyzing an image attachment. Identify and list all distinct colors visible in the image.\n\nFor each color found:\n1. Name the color (e.g., \"navy blue\", \"crimson\", \"sage green\")\n2. Describe its location using directional references (top-left corner, center, bottom-right, etc.) or by describing the object/element containing it\n3. Keep the location description brief but specific enough for someone to locate it immediately\n\nFormat your response as valid HTML with the following structure:\n- Use <html>, <head>, and <body> tags\n- Inside <body>, create an unordered list (<ul>) with each color as a list item (<li>)\n- Each <li> should follow this format: \"Color Name [location and context description]\"\n- Include basic styling in <head> <style> tags for readability (font-family, padding, etc.)\n- Add an <h4> heading with the text \"Colors Identified\" before the list\n\nExample output format:\n<html>\n<head>\n    <style>\n        body { font-family: Arial, sans-serif; padding: 20px; }\n        h4 { color: #333; margin-bottom: 15px; }\n        ul { line-height: 1.8; }\n    </style>\n</head>\n<body>\n    <h4>Colors Identified</h4>\n    <ul>\n        <li>🔵 Navy Blue [top-left corner of the header banner]</li>\n        <li>⚪ White [background of main content area]</li>\n        <li>🔴 Crimson Red [accent border on the right side]</li>\n        <li>🟢 Sage Green [text labels in the sidebar]</li>\n    </ul>\n</body>\n</html>\n\nReturn ONLY the HTML code. Do not include any markdown formatting or explanatory text. Output must start directly with <div> or <html>, not with ```html",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ $('Filter').item.binary.keys().join(\",\") }}",
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        32,
+        -96
+      ],
+      "id": "52fb3011-440d-41e9-8a48-3af1cc7ff510",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "Vamsi's OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "from:magic.bharat@gmail.com OR from:abhayaanjaneyulup@gmail.com"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "43b84c95-aab5-46ed-bb5a-3da5a02039d7",
+      "name": "Gmail Trigger - Monitor for Emails with Attachments",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        -96
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      },
+      "notes": "Triggers whenever a new email arrives with attachments. Configure your Gmail account here."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "71dc8a42-f2a5-40d8-81c3-02af635df040",
+              "leftValue": "={{ $('Gmail Trigger - Monitor for Emails with Attachments').item.binary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -96
+      ],
+      "id": "8fc0cf9d-3205-4ee5-8a53-a2f4aa52ee2d",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,magic.bharat@gmail.com",
+        "subject": "Color Analyzer",
+        "message": "=Hi,<br>\n<br>\n&ensp;&ensp;&ensp;&ensp;{{ $('Analyze image').item.json.choices[0].message.content }}<br>\n<br>\nRegards,<br>\nN8N.",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "={{ $('Filter').item.binary.keys().join(\",\") }}"
+              }
+            ]
+          },
+          "senderName": "Analyzer"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        -96
+      ],
+      "id": "14d32f8d-b097-41c5-ad33-40b2d10df42d",
+      "name": "Send a message",
+      "webhookId": "db682c50-84f0-47d7-a6ed-1209c7c23a62",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $('Gmail Trigger - Monitor for Emails with Attachments').item.json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        -96
+      ],
+      "id": "51253790-e4a8-47b7-adcf-077b558c9fdd",
+      "name": "Get a message",
+      "webhookId": "3041867a-b200-4530-a998-3a69ba413a0a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger - Monitor for Emails with Attachments": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Analyze image": [
+      {
+        "json": {
+          "id": "chatcmpl-CahMe0CxXqVIp1SqAQUU7Sbmv7m2b",
+          "object": "chat.completion",
+          "created": 1762862536,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "<html>\n<head>\n    <style>\n        body { font-family: Arial, sans-serif; padding: 20px; }\n        h4 { color: #333; margin-bottom: 15px; }\n        ul { line-height: 1.8; }\n    </style>\n</head>\n<body>\n    <h4>Colors Identified</h4>\n    <ul>\n        <li>🔴 Red [top-left circle]</li>\n        <li>🟢 Green [top-center circle]</li>\n        <li>🟡 Yellow [top-right circle]</li>\n        <li>🟠 Orange [middle-left circle]</li>\n        <li>🔵 Blue [middle-center circle]</li>\n        <li>🟣 Purple [middle-right circle]</li>\n        <li>🟠 Pink [bottom-center circle]</li>\n        <li>⚪ White [bottom-left circle]</li>\n        <li>⚫ Black [bottom-middle circle]</li>\n        <li>🟤 Brown [bottom-right circle]</li>\n    </ul>\n</body>\n</html>",
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 8906,
+            "completion_tokens": 236,
+            "total_tokens": 9142,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_51db84afab"
+        }
+      }
+    ]
+  },
+  "meta": {}
+}
