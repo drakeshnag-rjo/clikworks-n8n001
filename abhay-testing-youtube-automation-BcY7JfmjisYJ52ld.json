@@ -1,0 +1,255 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/veo3/requests/{{ $json.request_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -464,
+        4560
+      ],
+      "id": "2f7a8cd3-40eb-4d11-8572-dd9cbff0950f",
+      "name": "Get Video"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -256,
+        4560
+      ],
+      "id": "79872a41-95c8-4f84-aa1c-e8f6b2a23913",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "=So satisfying 🤤 #asmr\n",
+        "regionCode": "US",
+        "categoryId": "24",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        32,
+        4560
+      ],
+      "id": "ed85a212-9b67-497b-84a4-6120afe4de92",
+      "name": "YouTube1"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        4560
+      ],
+      "id": "8336dda1-ae2f-424b-b876-a5fdec8e286a",
+      "name": "Wait",
+      "webhookId": "a0f31d82-19a4-40d5-8b9e-61c086585e26"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Create a prompt for an ASMR Youtube video that I will pass into Google Veo3 so it can generate a hyper realistic ASMR video with sound. Make sure to start it with \"Generate a single, ultra-realistic 8-second ASMR video....\"",
+        "options": {
+          "systemMessage": "You specialize in creating prompts for hyperrealistic ASMR style videos. Here is an example prompt you came up with:\n\nGenerate a single, ultra-realistic 8-second ASMR video. The scene features a close-up, eye-level shot of a sharp, highly polished chef's knife slowly and smoothly slicing through a perfectly formed, transparent, luminescent, and glassy fruit (Veo3 can choose a visually appealing fruit like a strawberry, kiwi, or grape).\\n\\nThe fruit rests centrally on an authentic, rustic wooden cutting board with prominent, natural grain and a warm, inviting tone. The cutting board should show subtle signs of use but remain clean and appealing.\\n\\nAs the knife cuts, the fruit's interior should subtly illuminate with a soft, ethereal glow, emphasizing its translucent, crystalline structure. Focus on the delicate separation of the fruit as the blade passes through.\\n\\nAudio: The primary sound should be a hyper-realistic, satisfying \\\"slicing\\\" sound, meticulously captured to sound like a knife cutting through a very ripe, juicy fruit (e.g., the crisp tear of a perfectly ripe melon, or the subtle give of a soft plum). This sound should be accompanied by a faint, delicate, and resonant \\\"ping\\\" or \\\"tinkle\\\" as if the knife is interacting with a fragile, glass-like material, adding to the unique ASMR quality. No other background noise, music, or dialogue.\\n\\nCamera: Static, clean, and focused. The lighting should be soft, diffused, and primarily aimed at highlighting the fruit's glassy texture and the reflections on the knife and cutting board. Ensure a very shallow depth of field, with the focus sharply on the cutting action itself.\\n\\nOverall Tone: Clean, minimalist, mesmerizing, and deeply satisfying ASMR. The aim is to create an almost hypnotic effect through visual and auditory clarity. "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        4560
+      ],
+      "id": "d6c7cb1c-9a60-408f-a7cd-07cac3e9530f",
+      "name": "Prompt AI Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/veo3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "Generate a single, ultra-realistic 8-second ASMR video. The scene features a close-up, eye-level shot of a sharp, highly polished chef's knife slowly and smoothly slicing through a perfectly formed, transparent, luminescent, and glassy fruit (Veo3 can choose a visually appealing fruit like a strawberry, kiwi, or grape).\\n\\nThe fruit rests centrally on an authentic, rustic wooden cutting board with prominent, natural grain and a warm, inviting tone. The cutting board should show subtle signs of use but remain clean and appealing.\\n\\nAs the knife cuts, the fruit's interior should subtly illuminate with a soft, ethereal glow, emphasizing its translucent, crystalline structure. Focus on the delicate separation of the fruit as the blade passes through.\\n\\nAudio: The primary sound should be a hyper-realistic, satisfying \\\"slicing\\\" sound, meticulously captured to sound like a knife cutting through a very ripe, juicy fruit (e.g., the crisp tear of a perfectly ripe melon, or the subtle give of a soft plum). This sound should be accompanied by a faint, delicate, and resonant \\\"ping\\\" or \\\"tinkle\\\" as if the knife is interacting with a fragile, glass-like material, adding to the unique ASMR quality. No other background noise, music, or dialogue.\\n\\nCamera: Static, clean, and focused. The lighting should be soft, diffused, and primarily aimed at highlighting the fruit's glassy texture and the reflections on the knife and cutting board. Ensure a very shallow depth of field, with the focus sharply on the cutting action itself.\\n\\nOverall Tone: Clean, minimalist, mesmerizing, and deeply satisfying ASMR. The aim is to create an almost hypnotic effect through visual and auditory clarity."
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -816,
+        4560
+      ],
+      "id": "7118590e-feec-4f9e-9068-b3dfbfc7ff40",
+      "name": "Create Video1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1584,
+        4528
+      ],
+      "id": "aabdd55c-4e94-4924-8dee-db9f9207791d",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        4768
+      ],
+      "id": "ac2e0912-96e2-4e8d-b954-b10c92f1a17a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Lf3W4oX5YzVXTHAw",
+          "name": "Abhay-Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        4528
+      ],
+      "id": "d7ed2af8-0289-409b-b288-079e5a5a835a",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "Get Video": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "YouTube1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create Video1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video1": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Prompt AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Prompt AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
