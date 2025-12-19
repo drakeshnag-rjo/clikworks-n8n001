@@ -1,0 +1,367 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Analyze the attached image(s) for ALL spelling and grammatical errors. Identify and list every error found. Include explanations for grammatical suggestions.\n\nReturn the output in HTML format with this exact structure:\n\n<div style=\"font-family: Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px;\">\n<h3 style=\"color: #333; padding-bottom: 5px; margin-bottom: 15px;\">Key Corrections Needed:</h3>\n\n<h4 style=\"color: #d9534f; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Spelling Mistakes:</h4>\n<ul style=\"list-style-type: disc; padding-left: 20px;\">\n<li style=\"margin-bottom: 8px;\">❌ [incorrect spelling] → ✔️ [corrected spelling] ([precise location description]; [color] color; [position in image])</li>\n<li style=\"margin-bottom: 8px;\">❌ [incorrect spelling] → ✔️ [corrected spelling] ([precise location description]; [color] color; [position in image])</li>\n</ul>\n\n[IF GRAMMATICAL ERRORS EXIST]\n<h4 style=\"color: #5cb85c; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Grammatical Suggestions:</h4>\n<ul style=\"list-style-type: disc; padding-left: 20px;\">\n<li style=\"margin-bottom: 8px;\">⚠ ❌ [incorrect phrase] → ✔️ [corrected phrase] ([precise location description]; [color]; [position in image])</li>\n<li style=\"margin-bottom: 8px;\">Reason: [explanation]</li>\n<li style=\"margin-bottom: 8px;\">⚠ ❌ [incorrect phrase] → ✔️ [corrected phrase] ([precise location description]; [color]; [position in image])</li>\n</ul>\n[END IF]\n\n[IF NO ERRORS]\n<p style=\"color: #28a745; font-size: 16px; font-weight: bold; margin-top: 20px;\">✔️ No errors found. Your document is ready!</p>\n[END IF]\n</div>\n\nImportant rules:\n- Use smaller headings (h3 and h4 instead of h1 and h2)\n- Do NOT include border-bottom lines on headings\n- Use bullet points (disc style) for all list items\n- For every spelling mistake and grammatical error, provide location details, color, and position in brackets as shown\n- Only show the \"Grammatical Suggestions\" section if grammatical errors exist\n- Only show the \"No errors found\" message if there are no errors at all\n- Identify and list ALL spelling mistakes without exception\n- Output must start directly with <div>, not with ```html\n",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ $('Filter').item.binary.keys().join(\",\") }}",
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -832,
+        -6480
+      ],
+      "id": "a62285fa-2942-4fa7-9417-eb5af298aba1",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "Vamsi's OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "from:magic.bharat@gmail.com OR from:abhayaanjaneyulup@gmail.com"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "63e4f919-1065-4949-becf-85a0728af780",
+      "name": "Gmail Trigger - Monitor for Emails with Attachments",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1184,
+        -6256
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "j25XZmphXli9KKc4",
+          "name": "Abhay-Gmail account"
+        }
+      },
+      "notes": "Triggers whenever a new email arrives with attachments. Configure your Gmail account here."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "71dc8a42-f2a5-40d8-81c3-02af635df040",
+              "leftValue": "={{ $('Gmail Trigger - Monitor for Emails with Attachments').item.binary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        -6256
+      ],
+      "id": "f81989b5-eb0c-4c8d-b6eb-a8594ec91410",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com,drakeshnag@gmail.com",
+        "subject": "Spelling Mistakes Report",
+        "message": "=Hi,<br>\n<br>\n{{ $('Analyze image3').item.json.content }}<br>\n<br>\nRegards,<br>\nN8N.",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "={{ $('Filter').item.binary.keys().join(\",\") }}"
+              }
+            ]
+          },
+          "senderName": "Corrector"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        -6256
+      ],
+      "id": "586ccb21-6b94-486d-83a3-3062b8053ae1",
+      "name": "Send a message",
+      "webhookId": "db682c50-84f0-47d7-a6ed-1209c7c23a62",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "j25XZmphXli9KKc4",
+          "name": "Abhay-Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $('Gmail Trigger - Monitor for Emails with Attachments').item.json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        -6256
+      ],
+      "id": "77c8f57e-d962-4814-8f28-1b09e982cd95",
+      "name": "Get a message",
+      "webhookId": "3041867a-b200-4530-a998-3a69ba413a0a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "j25XZmphXli9KKc4",
+          "name": "Abhay-Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Analyze the attached image(s) for ALL spelling and grammatical errors. Identify and list every error found. Include explanations for grammatical suggestions. \n\nReturn the output in HTML format with this exact structure:\n\n<div style=\"font-family: Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px;\">\n<h3 style=\"color: #333; padding-bottom: 5px; margin-bottom: 15px;\">Key Corrections Needed:</h3>\n\n<h4 style=\"color: #d9534f; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Spelling Mistakes:</h4>\n<ul style=\"list-style-type: disc; padding-left: 20px;\">\n<li style=\"margin-bottom: 8px;\">❌ [incorrect spelling] → ✔️ [corrected spelling] (Location: [precise location description]; Color: [font color of incorrect word]; Position: [position in image])</li>\n<li style=\"margin-bottom: 8px;\">❌ [incorrect spelling] → ✔️ [corrected spelling] (Location: [precise location description]; Color: [font color of incorrect word]; Position: [position in image])</li>\n</ul>\n\n[IF GRAMMATICAL ERRORS EXIST]\n<h4 style=\"color: #5cb85c; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Grammatical Suggestions:</h4>\n<ul style=\"list-style-type: disc; padding-left: 20px;\">\n<li style=\"margin-bottom: 8px;\">⚠ ❌ [incorrect phrase] → ✔️ [corrected phrase]Location: [precise location description]; Color: [font color of incorrect phrase]; Position: [position in image])\n<br>Reason: [explanation]</li>\n<li style=\"margin-bottom: 8px;\">⚠ ❌ [incorrect phrase] → ✔️ [corrected phrase]Location: [precise location description]; Color: [font color of incorrect phrase]; Position: [position in image])\n<br>Reason: [explanation]</li>\n</ul>\n[END IF]\n\n[IF NO ERRORS]\n<p style=\"color: #28a745; font-size: 16px; font-weight: bold; margin-top: 20px;\">✔️ No errors found. Your document is ready!</p>\n[END IF]\n</div>\n\nImportant rules:\n- Use smaller headings (h3 and h4 instead of h1 and h2)\n- Do NOT include border-bottom lines on headings\n- Use bullet points (disc style) for all list items\n- For every spelling mistake and grammatical error, provide location details, color, and position in brackets.\n- Place the reason for grammatical suggestions on another line after the location details\n- Only show the \"Grammatical Suggestions\" section if grammatical errors exist\n- Only show the \"No errors found\" message if there are no errors at all\n- Identify and list ALL spelling mistakes without exception\n- Output must start directly with <div>, not with ```\n- The incorrect word or phrase must be exactly as it appears in the image.\n- Colors must be written in English (e.g., blue, red, black, green, etc.)\n",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ $('Filter').item.binary.keys().join(\",\") }}",
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1040,
+        -6480
+      ],
+      "id": "f9a59f03-7252-4371-830f-d88961e88304",
+      "name": "Analyze image1",
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "Vamsi's OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Analyze the attached image(s) for ALL spelling and grammatical errors. Identify and list every error found.\n\nDEFINITIONS:\n\nLocation: Where the error appears (e.g., \"5th row in Beverages section 2\", \"Header area\")\n\nPosition: Visual position using [top/middle/bottom]-[left/center/right] format\n\nColor: Font color of the incorrect text. Output ONLY if clearly identified; omit if not identifiable.\n\nReturn output in HTML format:\n\n<div style=\"font-family: Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px;\"> <h3 style=\"color: #333; padding-bottom: 5px; margin-bottom: 15px;\">Key Corrections Needed:</h3> <h4 style=\"color: #d9534f; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Spelling Mistakes:</h4> <ul style=\"list-style-type: disc; padding-left: 20px;\"> <li style=\"margin-bottom: 8px;\">❌ <b>[incorrect] → [correct]</b> <br>(Location: [description]; Position: [vertical]-[horizontal][; Color: [color if identified]])</li> </ul>\n[IF GRAMMATICAL ERRORS EXIST]\n\n<h4 style=\"color: #5cb85c; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Grammatical Suggestions:</h4> <ul style=\"list-style-type: disc; padding-left: 20px;\"> <li style=\"margin-bottom: 8px;\">❌ <b>[incorrect] → [correct]</b> <br>(Location: [description]; Position: [vertical]-[horizontal][; Color: [color if identified]]) <br>Reason: [explanation]</li> </ul>\n[END IF]\n\n[IF NO ERRORS]\n\n<p style=\"color: #28a745; font-size: 16px; font-weight: bold; margin-top: 20px;\">✔️ No errors found. Your document is ready!</p>\n[END IF]\n\n</div>\nRules:\n\nList ALL spelling and grammatical errors\n\nStart output with <div> (no code blocks)\n\nUse exact words/phrases from the image\n\nColor names in English only",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ $('Filter').item.binary.keys().join(\",\") }}",
+        "simplify": false,
+        "options": {
+          "maxTokens": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -800,
+        -6256
+      ],
+      "id": "e093a9dc-3a01-43c4-b737-c302f80bf404",
+      "name": "Analyze image2",
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "Vamsi's OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "You are an expert image analyst. Compare all provided images:\n\nFor each image, describe: main subject matter, visual style, tone, composition, and quality. Output everything in html and start directly with <div>.\n\nProvide analysis in this format:\n- Subject Matter: [comparison across all]\n- Visual Style: [colors, lighting, composition patterns]\n- Quality/Clarity: [comparison]\n- Key Similarities: [list]\n- Key Differences: [list]\n- Summary: [2-3 sentences comparing all]",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ $('Filter').item.binary.keys().join(\",\") }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -560,
+        -6480
+      ],
+      "id": "97ad81c0-a873-44ca-ae71-a50386aa15ae",
+      "name": "Analyze image3",
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "Vamsi's OpenAi account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger - Monitor for Emails with Attachments": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Analyze image2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        []
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image1": {
+      "main": [
+        []
+      ]
+    },
+    "Analyze image2": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image3": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {
+    "Analyze image": [
+      {
+        "json": {
+          "id": "chatcmpl-CbRsA8i6fLAMzWoZ3zwZDvYGuxNMv",
+          "object": "chat.completion",
+          "created": 1763041314,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "<div style=\"font-family: Arial, sans-serif; line-height: 1.8; color: #333; max-width: 800px;\">\n<h3 style=\"color: #333; padding-bottom: 5px; margin-bottom: 15px;\">Key Corrections Needed:</h3>\n\n<h4 style=\"color: #d9534f; padding-bottom: 5px; margin-top: 15px; margin-bottom: 10px;\">Spelling Mistakes:</h4>\n<ul style=\"list-style-type: disc; padding-left: 20px;\">\n<li style=\"margin-bottom: 8px;\">❌ Contry Bread → ✔️ Country Bread (Beverages section; yellow color; left side)</li>\n<li style=\"margin-bottom: 8px;\">❌ Orange juice → ✔️ Orange Juice (Beverages section; yellow color; both sides)</li>\n<li style=\"margin-bottom: 8px;\">❌ Peach tamarin → ✔️ Peach Tamarind (Beverages section; yellow color; both sides)</li>\n<li style=\"margin-bottom: 8px;\">❌ Soda In A Bottle → ✔️ Soda in a Bottle (Drink section; yellow color; both sides)</li>\n<li style=\"margin-bottom: 8px;\">❌ Lemon Tea → ✔️ Lemon tea (Drink section; yellow color; both sides)</li>\n</ul>\n\n<h4 style=\"color: #5cb85",
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "length"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 37444,
+            "completion_tokens": 300,
+            "total_tokens": 37744,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_51db84afab"
+        }
+      }
+    ],
+    "Analyze image3": [
+      {
+        "json": {
+          "content": "```html\n<div>\n  <h2>Image Analysis</h2>\n  \n  <h3>Comparison Across All Images</h3>\n  \n  <h4>Subject Matter:</h4>\n  <p>Image 1 features a vibrant sunset over the ocean. Image 2 depicts a serene landscape with mountains and a reflective lake. Image 3 shows a tropical beach at sunset, framed by palm trees.</p>\n  \n  <h4>Visual Style:</h4>\n  <p>Image 1 utilizes warm colors (pinks and oranges) with soft lighting, creating a tranquil atmosphere. Image 2 showcases bright blues and greens under clear skies, lending a fresh and airy feel. Image 3 employs deep purples and oranges, with bold silhouettes of palm trees, creating a dramatic sunset composition.</p>\n  \n  <h4>Quality/Clarity:</h4>\n  <p>All images are clear and high quality. Image 1 and 2 exhibit rich detail, while Image 3, while vibrant, is slightly lower in sharpness due to the backlighting.</p>\n  \n  <h4>Key Similarities:</h4>\n  <ul>\n    <li>All three images capture sunsets or sunrise, highlighting the beauty of natural light.</li>\n    <li>They convey a sense of calm and serenity.</li>\n    <li>Each image includes a body of water, reflecting the colors of the sky.</li"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
