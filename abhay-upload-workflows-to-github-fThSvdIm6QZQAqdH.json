@@ -290,7 +290,8 @@
         "rule": {
           "interval": [
             {
-              "triggerAtHour": 2
+              "triggerAtHour": 2,
+              "triggerAtMinute": 1
             }
           ]
         }
