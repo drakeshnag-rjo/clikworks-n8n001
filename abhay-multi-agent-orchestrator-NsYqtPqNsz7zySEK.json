@@ -1,0 +1,729 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "id": "chat-trigger-001",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        304
+      ],
+      "webhookId": "multi-agent-chat-001"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a Supervisor AI Agent that manages multiple specialized sub-agents. Your job is to understand the user's request and delegate it to the appropriate sub-agent tool.\n\nYou have access to the following tools:\n\n1. **generate_image** - Use this when the user wants to generate an image from text. Extract the image prompt/description from the user's message.\n\n2. **summarize_company** - Use this when the user provides an email address and wants to know about the company. Extract the email address from the message.\n\n3. **scrape_website** - Use this when the user wants to scrape data from a website. Extract the website URL and what data they want to collect.\n\nAnalyze the user's message carefully and call the appropriate tool with the extracted parameters. If the request is unclear, ask for clarification.\n\nAlways respond with what action you're taking and the result from the sub-agent."
+        }
+      },
+      "id": "supervisor-agent-001",
+      "name": "Supervisor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        208,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "openai-chat-model-001",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        528
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "generate_image",
+        "description": "Generates an image based on a text prompt using DALL-E and sends it via email to abhayaanjaneyulup@gmail.com. Use this when user wants to create/generate an image from a description.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        }
+      },
+      "id": "tool-image-gen-001",
+      "name": "Image Generator Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        208,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "name": "summarize_company",
+        "description": "Extracts the domain from an email address, researches the company, and sends a summary via email to abhayaanjaneyulup@gmail.com. Use when user provides an email and wants company information.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        }
+      },
+      "id": "tool-company-001",
+      "name": "Company Summarizer Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        400,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "name": "scrape_website",
+        "description": "Scrapes data from a website, uploads to a new Google Sheet, and sends the sheet link via email to abhayaanjaneyulup@gmail.com. Use when user wants to extract/scrape data from a URL.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        }
+      },
+      "id": "tool-scraper-001",
+      "name": "Web Scraper Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        608,
+        528
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "execute-trigger-image",
+      "name": "Image Gen Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "={{ $json.prompt }}",
+        "options": {
+          "size": "1024x1024"
+        }
+      },
+      "id": "dalle-generate-001",
+      "name": "DALL-E Generate Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        0,
+        800
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "http-download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "Your AI Generated Image",
+        "message": "Hello!\n\nHere is your AI-generated image based on the following prompt:\n\n\"{{ $('Image Gen Trigger').item.json.prompt }}\"\n\nThe image is attached to this email.\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "gmail-send-image",
+      "name": "Send Image Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        800
+      ],
+      "webhookId": "e9d4cede-3a70-4f9e-901c-0b434ccaec43",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "Image generated successfully and sent to abhayaanjaneyulup@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-image-result",
+      "name": "Image Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        800
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "execute-trigger-company",
+      "name": "Company Summary Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json.email;\nconst domain = email.split('@')[1];\nreturn [{ json: { email, domain, companyUrl: `https://${domain}` } }];"
+      },
+      "id": "extract-domain",
+      "name": "Extract Domain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.companyUrl }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "http-fetch-company",
+      "name": "Fetch Company Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "openai-summarize",
+      "name": "Summarize Company",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        1104
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Company Summary: {{ $('Extract Domain').item.json.domain }}",
+        "message": "=Hello!\n\nHere is the company summary for the domain extracted from: {{ $('Company Summary Trigger').item.json.email }}\n\nDomain: {{ $('Extract Domain').item.json.domain }}\n\n---\n\n{{ $json.message.content }}\n\n---\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {}
+      },
+      "id": "gmail-send-company",
+      "name": "Send Company Summary Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        608,
+        1104
+      ],
+      "webhookId": "1cdc018b-aed6-4428-bae2-08be3e6c222a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "=Company summary for {{ $('Extract Domain').item.json.domain }} generated and sent to abhayaanjaneyulup@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-company-result",
+      "name": "Company Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        1104
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "execute-trigger-scraper",
+      "name": "Scraper Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "http-scrape-website",
+      "name": "Fetch Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "openai-extract-data",
+      "name": "AI Extract Data",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        208,
+        1408
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message.content;\nlet data;\ntry {\n  const jsonMatch = content.match(/\\[.*\\]/s) || content.match(/\\{.*\\}/s);\n  if (jsonMatch) {\n    data = JSON.parse(jsonMatch[0]);\n    if (!Array.isArray(data)) data = [data];\n  } else {\n    data = [{ content: content }];\n  }\n} catch (e) {\n  data = [{ content: content }];\n}\nreturn data.map(item => ({ json: item }));"
+      },
+      "id": "parse-scraped-data",
+      "name": "Parse Scraped Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "title": "=Scraped Data - {{ new Date().toISOString().split('T')[0] }}",
+        "options": {}
+      },
+      "id": "create-google-sheet",
+      "name": "Create Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        608,
+        1408
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "append-to-sheet",
+      "name": "Append Data to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        1408
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Scraped Data from Website",
+        "message": "=Hello!\n\nI have successfully scraped data from:\n{{ $('Scraper Trigger').item.json.url }}\n\nData requested: {{ $('Scraper Trigger').item.json.data_to_extract }}\n\nThe data has been uploaded to a new Google Sheet:\n{{ $('Create Google Sheet').item.json.spreadsheetUrl }}\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {}
+      },
+      "id": "gmail-send-sheet",
+      "name": "Send Sheet Link Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        1408
+      ],
+      "webhookId": "26f90cc4-743f-4253-8aa9-a233f8f9a46e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "=Data scraped and uploaded to Google Sheets. Link sent to abhayaanjaneyulup@gmail.com. Sheet URL: {{ $('Create Google Sheet').item.json.spreadsheetUrl }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-scraper-result",
+      "name": "Scraper Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1200,
+        1408
+      ]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Generator Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Summarizer Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Scraper Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Gen Trigger": {
+      "main": [
+        [
+          {
+            "node": "DALL-E Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DALL-E Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Send Image Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Image Email": {
+      "main": [
+        [
+          {
+            "node": "Image Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Summary Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Domain": {
+      "main": [
+        [
+          {
+            "node": "Fetch Company Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Website": {
+      "main": [
+        [
+          {
+            "node": "Summarize Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Company": {
+      "main": [
+        [
+          {
+            "node": "Send Company Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Company Summary Email": {
+      "main": [
+        [
+          {
+            "node": "Company Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scraper Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Website": {
+      "main": [
+        [
+          {
+            "node": "AI Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Parse Scraped Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Scraped Data": {
+      "main": [
+        [
+          {
+            "node": "Create Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Append Data to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Data to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Sheet Link Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Sheet Link Email": {
+      "main": [
+        [
+          {
+            "node": "Scraper Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
