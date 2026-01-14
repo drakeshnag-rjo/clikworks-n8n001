@@ -1,0 +1,191 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        304
+      ],
+      "webhookId": "text-to-image-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an expert DALL-E prompt engineer. Your ONLY job is to take a user's image request and transform it into an optimized, detailed prompt for DALL-E 3.\n\nRules:\n1. Output ONLY the optimized prompt - no explanations, no quotes, no prefixes\n2. Add specific artistic details: style, lighting, mood, composition, colors\n3. Include camera angle, perspective, and rendering style when appropriate\n4. Keep the prompt under 400 characters for best results\n5. Make the prompt vivid and descriptive\n\nExamples:\nInput: \"a cat\"\nOutput: A fluffy orange tabby cat lounging on a sunlit windowsill, soft morning light streaming through sheer curtains, photorealistic style, shallow depth of field, warm cozy atmosphere\n\nInput: \"sunset\"\nOutput: Dramatic ocean sunset with vibrant orange and purple clouds reflected on calm waters, silhouetted palm trees in foreground, golden hour photography, wide angle cinematic composition"
+        }
+      },
+      "id": "image-agent",
+      "name": "Image Generation Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        304,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI GPT-4o-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        496
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        496
+      ],
+      "id": "simple-memory",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "={{ $json.output }}",
+        "options": {
+          "size": "1024x1024",
+          "style": "vivid"
+        }
+      },
+      "id": "dalle-generate",
+      "name": "DALL-E 3 Generate",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        656,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "Your AI Generated Image is Ready!",
+        "message": "=Hello!<br>\n<br>\nYour AI-generated image has been created successfully.<br>\n<br>\n**Original Request:**<br>\n\"{{ $('Chat Trigger').item.json.chatInput }}\"\n<br><br>\n**Optimized Prompt Used:**<br>\n\"{{ $('Image Generation Agent').item.json.output }}\"\n<br><br>\nThe image is attached to this email.\n<br><br>\nBest regards,<br>\nText-to-Image AI Agent",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "send-email",
+      "name": "Send Email with Image",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        848,
+        304
+      ],
+      "webhookId": "32e45a81-a258-4a3d-b5df-8be9b25513da",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Image Generation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Image Generation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Image Generation Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Generation Agent": {
+      "main": [
+        [
+          {
+            "node": "DALL-E 3 Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DALL-E 3 Generate": {
+      "main": [
+        [
+          {
+            "node": "Send Email with Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email with Image": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
