@@ -1,0 +1,225 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        304
+      ],
+      "webhookId": "company-summarizer-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a Company Research Assistant. Your job is to extract the company domain from an email address provided by the user.\n\nRules:\n1. Extract ONLY the domain from the email (e.g., from 'john@microsoft.com' extract 'microsoft.com')\n2. Output ONLY the domain - no explanations, no quotes, no prefixes\n3. If the user provides just a domain, use it directly\n4. If the input is not a valid email or domain, ask for clarification\n\nExamples:\nInput: \"Tell me about john@apple.com\"\nOutput: apple.com\n\nInput: \"What does the company google.com do?\"\nOutput: google.com\n\nInput: \"Research sarah.jones@salesforce.com\"\nOutput: salesforce.com"
+        }
+      },
+      "id": "domain-extractor-agent",
+      "name": "Domain Extractor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        304,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-nano"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI GPT-4o-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "CompanySession"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        496
+      ],
+      "id": "simple-memory",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $json.output }}",
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-website",
+      "name": "Fetch Company Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Company Research Analyst. Analyze the provided website content and create a comprehensive company summary.\n\nYour summary MUST include:\n1. **Company Name**: The official company name\n2. **Industry**: What industry/sector they operate in\n3. **What They Do**: Brief description of their products/services (2-3 sentences)\n4. **Key Offerings**: Bullet list of main products or services\n5. **Target Audience**: Who are their customers\n6. **Notable Information**: Any interesting facts, achievements, or unique aspects\n\nFormat the output in a clean, readable structure. If some information is not available, indicate 'Not found on website'.",
+              "role": "system"
+            },
+            {
+              "content": "=Analyze this company website and provide a comprehensive summary:\n\nDomain: {{ $('Domain Extractor Agent').item.json.output }}\n\nWebsite Content:\n{{ $json.data ? $json.data.substring(0, 15000) : 'Unable to fetch website content' }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1000,
+          "temperature": 0.3
+        }
+      },
+      "id": "company-summarizer",
+      "name": "AI Company Summarizer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        768,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Company Summary: {{ $('Domain Extractor Agent').item.json.output }}",
+        "message": "=Hello!<br><br>Here is the company summary you requested.<br><br><b>Original Request:</b><br>\"{{ $('Chat Trigger').item.json.chatInput }}\"<br><br><b>Domain Analyzed:</b><br>{{ $('Domain Extractor Agent').item.json.output }}<br><br><hr><br><b>Company Summary:</b><br><br>{{ $json.message.content.replace(/\\n/g, '<br>') }}<br><br><hr><br><br>Best regards,<br>Company Summarizer AI Agent",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Summary Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1072,
+        304
+      ],
+      "webhookId": "389330b6-18d0-4c72-9ff8-5bf62af37860",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Domain Extractor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Domain Extractor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Domain Extractor Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Domain Extractor Agent": {
+      "main": [
+        [
+          {
+            "node": "Fetch Company Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Website": {
+      "main": [
+        [
+          {
+            "node": "AI Company Summarizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Company Summarizer": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
