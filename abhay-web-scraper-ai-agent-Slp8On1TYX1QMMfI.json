@@ -1,0 +1,351 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        304
+      ],
+      "webhookId": "web-scraper-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a Web Scraping Assistant. Your job is to extract the URL and understand what data the user wants to scrape.\n\nRules:\n1. Extract the URL from the user's request\n2. Understand what data they want to extract\n3. Output a JSON object with exactly this format (no markdown, no code blocks):\n{\"url\": \"the-url-here\", \"data_to_extract\": \"description of what to extract\"}\n\nExamples:\nInput: \"Scrape product prices from https://example.com/products\"\nOutput: {\"url\": \"https://example.com/products\", \"data_to_extract\": \"product names and prices\"}\n\nInput: \"Get all the job listings from https://careers.google.com\"\nOutput: {\"url\": \"https://careers.google.com\", \"data_to_extract\": \"job titles, locations, and descriptions\"}\n\nInput: \"Extract contact information from https://company.com/about\"\nOutput: {\"url\": \"https://company.com/about\", \"data_to_extract\": \"contact details including emails, phone numbers, and addresses\"}"
+        }
+      },
+      "id": "url-extractor-agent",
+      "name": "URL Extractor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        304,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI GPT-4o-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        496
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "ScraperSession"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        496
+      ],
+      "id": "simple-memory",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.output;\ntry {\n  const parsed = JSON.parse(output);\n  return [{ json: parsed }];\n} catch (e) {\n  // Try to extract URL and data from text\n  const urlMatch = output.match(/https?:\\/\\/[^\\s\"]+/);\n  return [{ json: { url: urlMatch ? urlMatch[0] : output, data_to_extract: 'all relevant data' } }];\n}"
+      },
+      "id": "parse-request",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "fetch-website",
+      "name": "Fetch Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a Data Extraction Expert. Your job is to extract structured data from website content.\n\nRules:\n1. Extract ONLY the data the user requested\n2. Return the data as a valid JSON array of objects\n3. Each object should have consistent keys\n4. If data is tabular, preserve the structure\n5. Output ONLY valid JSON - no explanations, no markdown code blocks\n6. If no relevant data found, return [{\"message\": \"No relevant data found\"}]\n\nExample output format:\n[{\"name\": \"Product 1\", \"price\": \"$99\"}, {\"name\": \"Product 2\", \"price\": \"$149\"}]"
+            },
+            {
+              "role": "user",
+              "content": "=Extract the following data: {{ $('Parse Request').item.json.data_to_extract }}\n\nFrom this website content:\n{{ $json.data ? $json.data.substring(0, 20000) : 'Unable to fetch website content' }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 2000
+        }
+      },
+      "id": "data-extractor",
+      "name": "AI Data Extractor",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        976,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message.content;\nlet data;\ntry {\n  // Remove markdown code blocks if present\n  let cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  data = JSON.parse(cleaned);\n  if (!Array.isArray(data)) data = [data];\n} catch (e) {\n  data = [{ extracted_content: content }];\n}\nreturn data.map(item => ({ json: item }));"
+      },
+      "id": "parse-extracted-data",
+      "name": "Parse Extracted Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "=Scraped Data - {{ $('Parse Request').item.json.url.replace(/https?:\\/\\//, '').split('/')[0] }} - {{ new Date().toISOString().split('T')[0] }}",
+        "options": {}
+      },
+      "id": "create-sheet",
+      "name": "Create Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1424,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "append-data",
+      "name": "Append Data to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1648,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Scraped Data Ready: {{ $('Parse Request').item.json.url }}",
+        "message": "=Hello!<br><br>Your web scraping task has been completed.<br><br><b>Original Request:</b><br>\"{{ $('Chat Trigger').item.json.chatInput }}\"<br><br><b>URL Scraped:</b><br>{{ $('Parse Request').item.json.url }}<br><br><b>Data Extracted:</b><br>{{ $('Parse Request').item.json.data_to_extract }}<br><br><b>Google Sheet Link:</b><br><a href=\"{{ $('Create Google Sheet').item.json.spreadsheetUrl }}\">{{ $('Create Google Sheet').item.json.spreadsheetUrl }}</a><br><br>The extracted data has been uploaded to the Google Sheet above.<br><br>Best regards,<br>Web Scraper AI Agent",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email with Sheet Link",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1872,
+        304
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "URL Extractor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "URL Extractor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "URL Extractor Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL Extractor Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Website": {
+      "main": [
+        [
+          {
+            "node": "AI Data Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Data Extractor": {
+      "main": [
+        [
+          {
+            "node": "Parse Extracted Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Extracted Data": {
+      "main": [
+        [
+          {
+            "node": "Create Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Append Data to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Data to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Email with Sheet Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
