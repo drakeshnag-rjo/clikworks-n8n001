@@ -72,14 +72,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const output = $input.first().json.output;\ntry {\n  const parsed = JSON.parse(output);\n  return [{ json: parsed }];\n} catch (e) {\n  // Try to extract URL and data from text\n  const urlMatch = output.match(/https?:\\/\\/[^\\s\"]+/);\n  return [{ json: { url: urlMatch ? urlMatch[0] : output, data_to_extract: 'all relevant data' } }];\n}"
+        "jsCode": "const output = $input.first().json.output;\ntry {\n  const parsed = JSON.parse(output);\n  return [{ json: parsed }];\n} catch (e) {\n  const urlMatch = output.match(/https?:\\/\\/[^\\s\"]+/);\n  return [{ json: { url: urlMatch ? urlMatch[0] : output, data_to_extract: 'all relevant data' } }];\n}"
       },
       "id": "parse-request",
       "name": "Parse Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        528,
+        576,
         304
       ]
     },
@@ -88,9 +88,7 @@
         "url": "={{ $json.url }}",
         "options": {
           "response": {
-            "response": {
-              "fullResponse": false
-            }
+            "response": {}
           },
           "timeout": 15000
         }
@@ -106,27 +104,26 @@
     },
     {
       "parameters": {
-        "model": {
+        "modelId": {
           "__rl": true,
           "value": "gpt-4o-mini",
           "mode": "list",
-          "cachedResultName": "gpt-4o-mini"
+          "cachedResultName": "GPT-4O-MINI"
         },
         "messages": {
           "values": [
             {
-              "role": "system",
-              "content": "You are a Data Extraction Expert. Your job is to extract structured data from website content.\n\nRules:\n1. Extract ONLY the data the user requested\n2. Return the data as a valid JSON array of objects\n3. Each object should have consistent keys\n4. If data is tabular, preserve the structure\n5. Output ONLY valid JSON - no explanations, no markdown code blocks\n6. If no relevant data found, return [{\"message\": \"No relevant data found\"}]\n\nExample output format:\n[{\"name\": \"Product 1\", \"price\": \"$99\"}, {\"name\": \"Product 2\", \"price\": \"$149\"}]"
+              "content": "You are a Data Extraction Expert. Your job is to extract structured data from website content.\n\nRules:\n1. Extract ONLY the data the user requested\n2. Return the data as a valid JSON array of objects\n3. Each object should have consistent keys\n4. If data is tabular, preserve the structure\n5. Output ONLY valid JSON - no explanations, no markdown code blocks\n6. If no relevant data found, return [{\"message\": \"No relevant data found\"}]\n\nExample output format:\n[{\"name\": \"Product 1\", \"price\": \"$99\"}, {\"name\": \"Product 2\", \"price\": \"$149\"}]",
+              "role": "system"
             },
             {
-              "role": "user",
-              "content": "=Extract the following data: {{ $('Parse Request').item.json.data_to_extract }}\n\nFrom this website content:\n{{ $json.data ? $json.data.substring(0, 20000) : 'Unable to fetch website content' }}"
+              "content": "=Extract the following data: {{ $('Parse Request').item.json.data_to_extract }}\n\nFrom this website url: {{ $('Parse Request').item.json.url }}"
             }
           ]
         },
         "options": {
-          "temperature": 0.1,
-          "maxTokens": 2000
+          "maxTokens": 2000,
+          "temperature": 0.1
         }
       },
       "id": "data-extractor",
@@ -134,7 +131,7 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
       "position": [
-        976,
+        944,
         304
       ],
       "credentials": {
@@ -146,21 +143,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const content = $input.first().json.message.content;\nlet data;\ntry {\n  // Remove markdown code blocks if present\n  let cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  data = JSON.parse(cleaned);\n  if (!Array.isArray(data)) data = [data];\n} catch (e) {\n  data = [{ extracted_content: content }];\n}\nreturn data.map(item => ({ json: item }));"
-      },
-      "id": "parse-extracted-data",
-      "name": "Parse Extracted Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1200,
-        304
-      ]
-    },
-    {
-      "parameters": {
         "operation": "create",
-        "title": "=Scraped Data - {{ $('Parse Request').item.json.url.replace(/https?:\\/\\//, '').split('/')[0] }} - {{ new Date().toISOString().split('T')[0] }}",
+        "documentId": {
+          "__rl": true,
+          "value": "1F8-yuzxq75sVOr0OcoMBkqJZpFjzjYLlXdMEGAz-z2M",
+          "mode": "list",
+          "cachedResultName": "n8n-Agentic AI spreadsheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1F8-yuzxq75sVOr0OcoMBkqJZpFjzjYLlXdMEGAz-z2M/edit?usp=drivesdk"
+        },
+        "title": "=Scraped Data - {{ $('Parse Request').item.json.url.replace(/https?:\\/\\//, '').split('/')[0] }} - {{ new Date().toISOString().split('T')[0] }} - {{ $now.toFormat('HH:mm') }}",
         "options": {}
       },
       "id": "create-sheet",
@@ -168,13 +159,582 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
+        1248,
+        304
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Abhay-Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the AI Data Extractor output\nconst content = $('AI Data Extractor').item.json.message.content;\nlet data;\n\ntry {\n  // Remove markdown code blocks if present\n  let cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  data = JSON.parse(cleaned);\n  if (!Array.isArray(data)) data = [data];\n} catch (e) {\n  data = [{ extracted_content: content }];\n}\n\n// Get spreadsheet info from Create Google Sheet\nconst spreadsheetId = $input.first().json.spreadsheetId;\nconst spreadsheetUrl = $input.first().json.spreadsheetUrl;\nconst sheetTitle = $input.first().json.title || 'Sheet1';\n\n// Extract column headers from the first data item\nconst headers = Object.keys(data[0]);\n\n// Create header row object (column names as both key and value)\nconst headerRow = {};\nheaders.forEach(h => headerRow[h] = h);\n\n// Return: first the header row, then all data rows\nconst results = [\n  { json: { ...headerRow, _isHeader: true, _spreadsheetId: spreadsheetId, _spreadsheetUrl: spreadsheetUrl, _sheetTitle: sheetTitle } },\n  ...data.map(item => ({ json: { ...item, _isHeader: false, _spreadsheetId: spreadsheetId, _spreadsheetUrl: spreadsheetUrl, _sheetTitle: sheetTitle } }))\n];\n\nreturn results;"
+      },
+      "id": "parse-extracted-data",
+      "name": "Parse Extracted Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
         1424,
+        304
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "=1F8-yuzxq75sVOr0OcoMBkqJZpFjzjYLlXdMEGAz-z2M",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "=Scraped Data - {{ $('Parse Request').item.json.url.replace(/https?:\\/\\//, '').split('/')[0] }} - {{ new Date().toISOString().split('T')[0] }} - {{ $now.toFormat('HH:mm') }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "name": "={{ $json.name }}",
+            "_isHeader": "={{ $json._isHeader }}",
+            "_sheetTitle": "=Scraped Data - {{ $('Parse Request').item.json.url.replace(/https?:\\/\\//, '').split('/')[0] }} - {{ new Date().toISOString().split('T')[0] }}",
+            "industry": "="
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "_isHeader",
+              "displayName": "_isHeader",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "_spreadsheetId",
+              "displayName": "_spreadsheetId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "_sheetTitle",
+              "displayName": "_sheetTitle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED",
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "append-data",
+      "name": "Append Data to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1632,
         304
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ZPlcmAsT9c4XbZJu",
-          "name": "Google Sheets account"
+          "name": "Abhay-Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Scraped Data Ready: {{ $('Parse Request').item.json.url }}",
+        "message": "=Hello!<br><br>Your web scraping task has been completed.<br><br><b>Original Request:</b><br>\"{{ $('Chat Trigger').item.json.chatInput }}\"<br><br><b>URL Scraped:</b><br>{{ $('Parse Request').item.json.url }}<br><br><b>Data Extracted:</b><br>{{ $('Parse Request').item.json.data_to_extract }}<br><br><b>Google Sheet Link:</b><br><a href=\"https://docs.google.com/spreadsheets/d/1F8-yuzxq75sVOr0OcoMBkqJZpFjzjYLlXdMEGAz-z2M/edit\">https://docs.google.com/spreadsheets/d/1F8-yuzxq75sVOr0OcoMBkqJZpFjzjYLlXdMEGAz-z2M/edit\n</a><br><br>The extracted data has been uploaded to the Google Sheet above.<br><br>Best regards,<br>Web Scraper AI Agent",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email with Sheet Link",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1856,
+        304
+      ],
+      "webhookId": "ad5a7cd6-89ed-4724-a60c-06b9680f8e3b",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a Supervisor AI Agent that manages multiple specialized sub-agents. Your job is to understand the user's request and delegate it to the appropriate sub-agent tool.\n\nYou have access to the following tools:\n\n1. **generate_image** - Use this when the user wants to generate an image from text. Extract the image prompt/description from the user's message.\n\n2. **summarize_company** - Use this when the user provides an email address and wants to know about the company. Extract the email address from the message.\n\n3. **scrape_website** - Use this when the user wants to scrape data from a website. Extract the website URL and what data they want to collect.\n\nAnalyze the user's message carefully and call the appropriate tool with the extracted parameters. If the request is unclear, ask for clarification.\n\nAlways respond with what action you're taking and the result from the sub-agent."
+        }
+      },
+      "id": "5f109b9c-32d6-42f9-a430-10d634ce7ad0",
+      "name": "Supervisor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1056,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "32a598e4-f4e9-4c77-84c5-c7b73d400e4e",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        848,
+        1808
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "generate_image",
+        "description": "Generates an image based on a text prompt using DALL-E and sends it via email to abhayaanjaneyulup@gmail.com. Use this when user wants to create/generate an image from a description.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        }
+      },
+      "id": "0f2f0ca4-570f-4aca-b5b2-967b83e428d2",
+      "name": "Image Generator Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "name": "summarize_company",
+        "description": "Extracts the domain from an email address, researches the company, and sends a summary via email to abhayaanjaneyulup@gmail.com. Use when user provides an email and wants company information.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        }
+      },
+      "id": "b6ce5ec4-4c3d-45e0-84c7-9cf689bc6316",
+      "name": "Company Summarizer Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "name": "scrape_website",
+        "description": "Scrapes data from a website, uploads to a new Google Sheet, and sends the sheet link via email to abhayaanjaneyulup@gmail.com. Use when user wants to extract/scrape data from a URL.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        }
+      },
+      "id": "ec058173-3173-4340-83ad-6a20cb63e8cd",
+      "name": "Web Scraper Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        1808
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0a11d04c-ce78-472c-8c51-be49b842d46e",
+      "name": "Image Gen Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "={{ $json.prompt }}",
+        "options": {
+          "size": "1024x1024"
+        }
+      },
+      "id": "7c91862d-e22b-4a2d-a259-6cf52f185f00",
+      "name": "DALL-E Generate Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        848,
+        2080
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "b4c79c13-7259-46ea-b293-1d306617b4ca",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "Your AI Generated Image",
+        "message": "Hello!\n\nHere is your AI-generated image based on the following prompt:\n\n\"{{ $('Image Gen Trigger').item.json.prompt }}\"\n\nThe image is attached to this email.\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "3bf3e9ed-31b1-4e3e-bcb7-88a60a835641",
+      "name": "Send Image Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        2080
+      ],
+      "webhookId": "e9d4cede-3a70-4f9e-901c-0b434ccaec43",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "Image generated successfully and sent to abhayaanjaneyulup@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2f93013e-0742-4fa1-b1df-555028c66a0a",
+      "name": "Image Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1456,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json.email;\nconst domain = email.split('@')[1];\nreturn [{ json: { email, domain, companyUrl: `https://${domain}` } }];"
+      },
+      "id": "03db9c02-9c8e-4c94-9f9f-be4e07f4432a",
+      "name": "Extract Domain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        2384
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.companyUrl }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "de5db92a-2717-4e7d-89b7-1225612a0a67",
+      "name": "Fetch Company Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        2384
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "0983670b-7e0e-4158-9ffc-469998aeff52",
+      "name": "Summarize Company",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1248,
+        2384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Company Summary: {{ $('Extract Domain').item.json.domain }}",
+        "message": "=Hello!\n\nHere is the company summary for the domain extracted from: {{ $('Company Summary Trigger').item.json.email }}\n\nDomain: {{ $('Extract Domain').item.json.domain }}\n\n---\n\n{{ $json.message.content }}\n\n---\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {}
+      },
+      "id": "284d83b1-74be-4609-a1cf-70048ebbbeb6",
+      "name": "Send Company Summary Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1456,
+        2384
+      ],
+      "webhookId": "1cdc018b-aed6-4428-bae2-08be3e6c222a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "=Company summary for {{ $('Extract Domain').item.json.domain }} generated and sent to abhayaanjaneyulup@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d9355437-c24f-41b8-95c3-160e9ff1b357",
+      "name": "Company Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1648,
+        2384
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "id": "47165577-4b31-42bc-b504-284bbda47949",
+      "name": "AI Extract Data",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1056,
+        2688
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message.content;\nlet data;\ntry {\n  const jsonMatch = content.match(/\\[.*\\]/s) || content.match(/\\{.*\\}/s);\n  if (jsonMatch) {\n    data = JSON.parse(jsonMatch[0]);\n    if (!Array.isArray(data)) data = [data];\n  } else {\n    data = [{ content: content }];\n  }\n} catch (e) {\n  data = [{ content: content }];\n}\nreturn data.map(item => ({ json: item }));"
+      },
+      "id": "aba4b7f3-cc42-4fa4-a9e5-a6cf30108791",
+      "name": "Parse Scraped Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        2688
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "=Scraped Data from Website",
+        "message": "=Hello!\n\nI have successfully scraped data from:\n{{ $('Scraper Trigger').item.json.url }}\n\nData requested: {{ $('Scraper Trigger').item.json.data_to_extract }}\n\nThe data has been uploaded to a new Google Sheet:\n{{ $('Create Google Sheet1').item.json.spreadsheetUrl }}\n\nBest regards,\nAI Agent Orchestrator",
+        "options": {}
+      },
+      "id": "8dcceed1-cc5a-41b2-878c-aab515ebf640",
+      "name": "Send Sheet Link Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1856,
+        2688
+      ],
+      "webhookId": "26f90cc4-743f-4253-8aa9-a233f8f9a46e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "result",
+              "value": "=Data scraped and uploaded to Google Sheets. Link sent to abhayaanjaneyulup@gmail.com. Sheet URL: {{ $('Create Google Sheet1').item.json.spreadsheetUrl }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "64e677d7-2b00-4b70-80ca-8a5b70c5cbdd",
+      "name": "Scraper Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2048,
+        2688
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "2a76642b-df3f-4e71-817d-67291673590b",
+      "name": "Fetch Website1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        2688
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "title": "=Scraped Data - {{ new Date().toISOString().split('T')[0] }}",
+        "options": {}
+      },
+      "id": "1177c9f9-be87-4dd6-b783-e3e8c13bc482",
+      "name": "Create Google Sheet1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1456,
+        2688
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZPlcmAsT9c4XbZJu",
+          "name": "Abhay-Google Sheets account"
         }
       }
     },
@@ -196,42 +756,314 @@
         },
         "options": {}
       },
-      "id": "append-data",
-      "name": "Append Data to Sheet",
+      "id": "06befc7b-4c52-45af-95a8-cc2b7a444fc9",
+      "name": "Append Data to Sheet1",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
         1648,
-        304
+        2688
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "ZPlcmAsT9c4XbZJu",
-          "name": "Google Sheets account"
+          "name": "Abhay-Google Sheets account"
         }
       }
     },
     {
       "parameters": {
-        "sendTo": "abhayaanjaneyulup@gmail.com",
-        "subject": "=Scraped Data Ready: {{ $('Parse Request').item.json.url }}",
-        "message": "=Hello!<br><br>Your web scraping task has been completed.<br><br><b>Original Request:</b><br>\"{{ $('Chat Trigger').item.json.chatInput }}\"<br><br><b>URL Scraped:</b><br>{{ $('Parse Request').item.json.url }}<br><br><b>Data Extracted:</b><br>{{ $('Parse Request').item.json.data_to_extract }}<br><br><b>Google Sheet Link:</b><br><a href=\"{{ $('Create Google Sheet').item.json.spreadsheetUrl }}\">{{ $('Create Google Sheet').item.json.spreadsheetUrl }}</a><br><br>The extracted data has been uploaded to the Google Sheet above.<br><br>Best regards,<br>Web Scraper AI Agent",
-        "options": {}
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert DALL-E prompt engineer. Transform the user request into an optimized, detailed prompt for DALL-E 3.\n\nRules:\n1. Output ONLY the optimized prompt - no explanations, no quotes, no prefixes\n2. Add specific artistic details: style, lighting, mood, composition, colors\n3. Include camera angle, perspective, and rendering style when appropriate\n4. Keep the prompt under 400 characters\n5. Make the prompt vivid and descriptive",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.description }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.8
+        }
       },
-      "id": "send-email",
-      "name": "Send Email with Sheet Link",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
+      "id": "8a0a6641-117b-4f22-9117-cc371b46a332",
+      "name": "AI Prompt Optimizer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
       "position": [
-        1872,
-        304
+        2160,
+        1936
       ],
       "credentials": {
-        "gmailOAuth2": {
-          "id": "1jbULp3mZWHpBMiC",
-          "name": "Abhay.padavala Gmail account"
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
         }
       }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Company Research Analyst. Analyze the provided website content and create a comprehensive company summary.\n\nYour summary MUST include:\n1. **Company Name**: The official company name\n2. **Industry**: What industry/sector they operate in\n3. **What They Do**: Brief description of their products/services (2-3 sentences)\n4. **Key Offerings**: Bullet list of main products or services\n5. **Target Audience**: Who are their customers\n6. **Notable Information**: Any interesting facts, achievements, or unique aspects\n\nFormat the output in a clean, readable structure. If some information is not available, indicate 'Not found on website'.",
+              "role": "system"
+            },
+            {
+              "content": "=Analyze this company website and provide a comprehensive summary:\n\nDomain: {{ $('Parse Supervisor Response').item.json.domain }}\n\nWebsite Content:\n{{ $json.data ? $json.data.substring(0, 15000) : 'Unable to fetch website content' }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1000,
+          "temperature": 0.3
+        }
+      },
+      "id": "6f42ac64-6ec6-4351-a158-00bbea7f2f26",
+      "name": "AI Company Summarizer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2160,
+        2112
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Data Extraction Expert. Your job is to extract structured data from website content.\n\nRules:\n1. Extract ONLY the data the user requested\n2. Return the data as a valid JSON array of objects\n3. Each object should have consistent keys\n4. If data is tabular, preserve the structure\n5. Output ONLY valid JSON - no explanations, no markdown code blocks\n6. If no relevant data found, return [{\"message\": \"No relevant data found\"}]\n\nExample output format:\n[{\"name\": \"Product 1\", \"price\": \"$99\"}, {\"name\": \"Product 2\", \"price\": \"$149\"}]",
+              "role": "system"
+            },
+            {
+              "content": "=Extract the following data: {{ $('Parse Supervisor Response').item.json.data_to_extract }}\n\nFrom this website url: {{ $('Parse Supervisor Response').item.json.url }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.1
+        }
+      },
+      "id": "44fb7b20-10ac-4958-9936-0caaa101cbb8",
+      "name": "AI Data Extractor1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2160,
+        2304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "B1C8W00cNUqBw7Oc",
+          "name": "InfiniteSkills OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        3024,
+        1616
+      ],
+      "id": "ed9fe70f-a160-4125-ac66-43321d815ae1",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2928,
+        1936
+      ],
+      "id": "cf9a5abf-09fc-4496-ba4d-9d0d511172af",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "E6Yr9VhpTqGWiwHI",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        3040,
+        1936
+      ],
+      "id": "faccb37b-d3a8-42cd-8525-dc9181bffb28",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2912,
+        2336
+      ],
+      "id": "337142be-7a08-4ca1-9393-2a67da2cddbb",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "E6Yr9VhpTqGWiwHI",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        3024,
+        2336
+      ],
+      "id": "29dd4d50-16c5-43fc-a487-21a84571945b",
+      "name": "Simple Memory3"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-nano"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2912,
+        1616
+      ],
+      "id": "11a21a46-dc96-430d-b6bb-eca5fb590b1f",
+      "name": "OpenAI Chat Model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "E6Yr9VhpTqGWiwHI",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the following data: {{ $('Parse Supervisor Response').item.json.data_to_extract }}\n\nFrom this website url: {{ $('Parse Supervisor Response').item.json.url }}",
+        "options": {
+          "systemMessage": "You are a Data Extraction Expert. Your job is to extract structured data from website content.\n\nRules:\n1. Extract ONLY the data the user requested\n2. Return the data as a valid JSON array of objects\n3. Each object should have consistent keys\n4. If data is tabular, preserve the structure\n5. Output ONLY valid JSON - no explanations, no markdown code blocks\n6. If no relevant data found, return [{\"message\": \"No relevant data found\"}]\n\nExample output format:\n[{\"name\": \"Product 1\", \"price\": \"$99\"}, {\"name\": \"Product 2\", \"price\": \"$149\"}]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2928,
+        2176
+      ],
+      "id": "7d817781-6c7b-4f08-bc17-6f8e334d73e5",
+      "name": "AI Data Extractor2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this company website and provide a comprehensive summary:\n\nDomain: {{ $('Parse Supervisor Response').item.json.domain }}\n\nWebsite Content:\n{{ $json.data ? $json.data.substring(0, 15000) : 'Unable to fetch website content' }}",
+        "options": {
+          "systemMessage": "You are a Company Research Analyst. Analyze the provided website content and create a comprehensive company summary.\n\nYour summary MUST include:\n1. **Company Name**: The official company name\n2. **Industry**: What industry/sector they operate in\n3. **What They Do**: Brief description of their products/services (2-3 sentences)\n4. **Key Offerings**: Bullet list of main products or services\n5. **Target Audience**: Who are their customers\n6. **Notable Information**: Any interesting facts, achievements, or unique aspects\n\nFormat the output in a clean, readable structure. If some information is not available, indicate 'Not found on website'."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2944,
+        1776
+      ],
+      "id": "d11f1fc6-ebe7-477e-8451-325485cb8c06",
+      "name": "AI Company Summarizer1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.description }}",
+        "options": {
+          "systemMessage": "You are an expert DALL-E prompt engineer. Transform the user request into an optimized, detailed prompt for DALL-E 3.\n\nRules:\n1. Output ONLY the optimized prompt - no explanations, no quotes, no prefixes\n2. Add specific artistic details: style, lighting, mood, composition, colors\n3. Include camera angle, perspective, and rendering style when appropriate\n4. Keep the prompt under 400 characters\n5. Make the prompt vivid and descriptive"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2928,
+        1456
+      ],
+      "id": "254598e6-abfd-4510-8c6f-3fe35c13a3a4",
+      "name": "AI Prompt Optimizer1"
     }
   ],
   "connections": {
@@ -305,17 +1137,6 @@
       "main": [
         [
           {
-            "node": "Parse Extracted Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Extracted Data": {
-      "main": [
-        [
-          {
             "node": "Create Google Sheet",
             "type": "main",
             "index": 0
@@ -324,6 +1145,17 @@
       ]
     },
     "Create Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Parse Extracted Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Extracted Data": {
       "main": [
         [
           {
@@ -340,6 +1172,270 @@
           {
             "node": "Send Email with Sheet Link",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Generator Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Summarizer Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Scraper Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Gen Trigger": {
+      "main": [
+        [
+          {
+            "node": "DALL-E Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DALL-E Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Send Image Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Image Email": {
+      "main": [
+        [
+          {
+            "node": "Image Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Domain": {
+      "main": [
+        [
+          {
+            "node": "Fetch Company Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Website": {
+      "main": [
+        [
+          {
+            "node": "Summarize Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Company": {
+      "main": [
+        [
+          {
+            "node": "Send Company Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Company Summary Email": {
+      "main": [
+        [
+          {
+            "node": "Company Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Parse Scraped Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Scraped Data": {
+      "main": [
+        [
+          {
+            "node": "Create Google Sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Sheet Link Email": {
+      "main": [
+        [
+          {
+            "node": "Scraper Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Website1": {
+      "main": [
+        [
+          {
+            "node": "AI Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Sheet1": {
+      "main": [
+        [
+          {
+            "node": "Append Data to Sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Data to Sheet1": {
+      "main": [
+        [
+          {
+            "node": "Send Sheet Link Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Prompt Optimizer1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Company Summarizer1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Company Summarizer1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Data Extractor2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory3": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Data Extractor2",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Prompt Optimizer1",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
