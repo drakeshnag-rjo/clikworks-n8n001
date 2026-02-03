@@ -1,0 +1,127 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "c98494a3-92ca-4128-940e-0702e76d8370",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -320,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "2026-02-02T00:00:00",
+        "endDate": "2026-02-02T00:00:00"
+      },
+      "id": "node-instantly-analytics",
+      "name": "Get Campaign Analytics",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -64
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dateStr = (() => {\n  const d = new Date();\n  d.setDate(d.getDate() - 1);\n  return d.toISOString().split('T')[0];\n})();\n\nconst campaigns = $input.all().map(item => item.json);\n\nlet totalSent = 0, totalOpened = 0, totalClicked = 0;\nlet totalReplied = 0, totalBounced = 0, totalUnsub = 0, totalOpps = 0;\n\ncampaigns.forEach(c => {\n  totalSent    += c.emails_sent_count       || 0;\n  totalOpened  += c.open_count_unique       || 0;\n  totalClicked += c.link_click_count_unique || 0;\n  totalReplied += c.reply_count_unique      || 0;\n  totalBounced += c.bounced_count           || 0;\n  totalUnsub   += c.unsubscribed_count      || 0;\n  totalOpps    += c.total_opportunities     || 0;\n});\n\nconst delivered  = totalSent - totalBounced;\nconst openRate   = totalSent   > 0 ? ((totalOpened  / totalSent)   * 100).toFixed(1) : '0.0';\nconst clickRate  = totalOpened > 0 ? ((totalClicked / totalOpened) * 100).toFixed(1) : '0.0';\nconst replyRate  = totalSent   > 0 ? ((totalReplied / totalSent)   * 100).toFixed(1) : '0.0';\nconst bounceRate = totalSent   > 0 ? ((totalBounced / totalSent)   * 100).toFixed(1) : '0.0';\n\nconst active = campaigns.filter(c => c.campaign_status === 1);\nconst div = '\\u2501'.repeat(38);\n\nlet msg = '';\nmsg += ':bar_chart: *Instantly Daily Analytics Report*\\n';\nmsg += '*Date:* ' + dateStr + '  |  *Campaigns:* ' + active.length + ' active / ' + campaigns.length + ' total\\n';\nmsg += div + '\\n\\n';\n\nmsg += ':outbox_tray: *Sent*            ' + totalSent.toLocaleString() + '\\n';\nmsg += ':white_check_mark: *Delivered*       ' + delivered.toLocaleString() + '\\n';\nmsg += ':eye: *Opened*           ' + totalOpened.toLocaleString() + '  (' + openRate + '%)\\n';\nmsg += ':point_right: *Clicked*          ' + totalClicked.toLocaleString() + '  (' + clickRate + '%)\\n';\nmsg += ':speech_balloon: *Replied*           ' + totalReplied.toLocaleString() + '  (' + replyRate + '%)\\n';\nmsg += ':warning: *Bounced*          ' + totalBounced.toLocaleString() + '  (' + bounceRate + '%)\\n\\n';\n\nmsg += div + '\\n';\nmsg += ':dart: *Opportunities:*  ' + totalOpps.toLocaleString() + '     :arrows_counterclockwise: *Unsubscribed:*  ' + totalUnsub.toLocaleString() + '\\n';\nmsg += div + '\\n\\n';\n\nif (active.length > 0) {\n  msg += ':mega: *Active Campaigns*\\n';\n  active.forEach(c => {\n    msg += '\\u2022 *' + c.campaign_name + '*\\n';\n    msg += '    Sent: ' + (c.emails_sent_count || 0) + '  |  Replied: ' + (c.reply_count_unique || 0) + '  |  Bounced: ' + (c.bounced_count || 0) + '\\n';\n  });\n  msg += '\\n';\n}\n\nmsg += ':bar_chart: <https://app.instantly.ai|View Full Dashboard>';\n\nreturn { json: { text: msg } };\n"
+      },
+      "id": "2d0b55ba-bb9b-48ac-8d91-0ec6aacf7505",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "n8n-testing",
+          "mode": "name",
+          "cachedResultName": "n8n-testing"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "2da2d2ab-47d4-4f0d-ae90-c9d553f8bbdc",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        -64
+      ],
+      "webhookId": "0b4e5871-e8e1-4551-b4c5-91ec33773741",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Campaign Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
