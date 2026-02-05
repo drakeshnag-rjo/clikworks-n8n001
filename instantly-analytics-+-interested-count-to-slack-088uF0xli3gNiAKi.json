@@ -1,0 +1,214 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}T00:00:00",
+        "endDate": "={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}T23:59:59"
+      },
+      "id": "get-campaign-analytics",
+      "name": "Get Campaign Analytics",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        -100
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "getMultiple",
+        "returnAll": true,
+        "filters": {
+          "interest_status": 1
+        }
+      },
+      "id": "get-interested-leads",
+      "name": "Get Interested Leads",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        100
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count interested leads from previous node\n// The Instantly API returns {items: [...]} so we need to count items array\nconst data = $input.first().json;\nconst count = data.items ? data.items.length : 0;\n\nreturn {\n  json: {\n    interested_count: count,\n    source: 'interested_leads'\n  }\n};"
+      },
+      "id": "count-interested",
+      "name": "Count Interested",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get yesterday's date\nconst dateStr = (() => {\n  const d = new Date();\n  d.setDate(d.getDate() - 1);\n  return d.toISOString().split('T')[0];\n})();\n\n// Get all input items\nconst allItems = $input.all();\n\n// Separate campaign analytics from interested leads count\nlet campaigns = [];\nlet interestedCount = 0;\n\nallItems.forEach(item => {\n  const data = item.json;\n  \n  // Check if this is campaign analytics data (has campaign_name)\n  if (data.campaign_name) {\n    campaigns.push(data);\n  }\n  \n  // Check if this is interested count\n  if (data.source === 'interested_leads') {\n    interestedCount = data.interested_count || 0;\n  }\n});\n\n// Calculate campaign metrics\nlet totalSent = 0, totalOpened = 0, totalClicked = 0;\nlet totalReplied = 0, totalBounced = 0, totalUnsub = 0, totalOpps = 0;\n\ncampaigns.forEach(c => {\n  totalSent    += c.emails_sent_count       || 0;\n  totalOpened  += c.open_count_unique       || 0;\n  totalClicked += c.link_click_count_unique || 0;\n  totalReplied += c.reply_count_unique      || 0;\n  totalBounced += c.bounced_count           || 0;\n  totalUnsub   += c.unsubscribed_count      || 0;\n  totalOpps    += c.total_opportunities     || 0;\n});\n\n// Calculate rates\nconst delivered  = totalSent - totalBounced;\nconst openRate   = totalSent   > 0 ? ((totalOpened  / totalSent)   * 100).toFixed(1) : '0.0';\nconst clickRate  = totalOpened > 0 ? ((totalClicked / totalOpened) * 100).toFixed(1) : '0.0';\nconst replyRate  = totalSent   > 0 ? ((totalReplied / totalSent)   * 100).toFixed(1) : '0.0';\nconst bounceRate = totalSent   > 0 ? ((totalBounced / totalSent)   * 100).toFixed(1) : '0.0';\n\n// Get active campaigns\nconst active = campaigns.filter(c => c.campaign_status === 1);\nconst div = '\\u2501'.repeat(38);\n\n// Build Slack message\nlet msg = '';\nmsg += ':bar_chart: *Instantly Daily Analytics Report*\\n';\nmsg += '*Date:* ' + dateStr + '  |  *Campaigns:* ' + active.length + ' active / ' + campaigns.length + ' total\\n';\nmsg += div + '\\n\\n';\n\nmsg += ':outbox_tray: *Sent*            ' + totalSent.toLocaleString() + '\\n';\nmsg += ':white_check_mark: *Delivered*       ' + delivered.toLocaleString() + '\\n';\nmsg += ':eye: *Opened*           ' + totalOpened.toLocaleString() + '  (' + openRate + '%)\\n';\nmsg += ':point_right: *Clicked*          ' + totalClicked.toLocaleString() + '  (' + clickRate + '%)\\n';\nmsg += ':speech_balloon: *Replied*          ' + totalReplied.toLocaleString() + '  (' + replyRate + '%)\\n';\nmsg += ':star: *Interested*       ' + interestedCount.toLocaleString() + '\\n';\nmsg += ':warning: *Bounced*          ' + totalBounced.toLocaleString() + '  (' + bounceRate + '%)\\n\\n';\n\nmsg += div + '\\n';\nmsg += ':dart: *Opportunities:*  ' + totalOpps.toLocaleString() + '     :arrows_counterclockwise: *Unsubscribed:*  ' + totalUnsub.toLocaleString() + '\\n';\nmsg += div + '\\n\\n';\n\nif (active.length > 0) {\n  msg += ':mega: *Active Campaigns*\\n';\n  active.forEach(c => {\n    msg += '\\u2022 *' + c.campaign_name + '*\\n';\n    msg += '    Sent: ' + (c.emails_sent_count || 0) + '  |  Replied: ' + (c.reply_count_unique || 0) + '  |  Bounced: ' + (c.bounced_count || 0) + '\\n';\n  });\n  msg += '\\n';\n}\n\nmsg += ':bar_chart: <https://app.instantly.ai|View Full Dashboard>';\n\nreturn { json: { text: msg } };\n"
+      },
+      "id": "format-slack-message",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "n8n-testing",
+          "mode": "name",
+          "cachedResultName": "n8n-testing"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "send-to-slack",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        620,
+        0
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Campaign Analytics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Interested Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Analytics": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Interested Leads": {
+      "main": [
+        [
+          {
+            "node": "Count Interested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Interested": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
