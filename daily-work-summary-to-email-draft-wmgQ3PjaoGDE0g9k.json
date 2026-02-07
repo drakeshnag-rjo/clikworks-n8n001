@@ -1,0 +1,212 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "=padavalaabhayanjaneyulu@gmail.com",
+        "subject": "📝 Daily Work Summary Reminder",
+        "emailType": "text",
+        "message": "Hey Abhay!\n\nTime to log your work for today.\n\n👉 Fill the form here: https://trainn8n.kozow.com/form-test/0a80e666-9ebd-48f8-8245-bdc7d6e14d67\n\nThis will create an email draft in Gmail for you to review and send to Bharat.\n\n- Kavi",
+        "options": {}
+      },
+      "id": "c61dc012-1aeb-4ffc-9020-aa9ccedd0934",
+      "name": "Send Email Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        848
+      ],
+      "webhookId": "cb10bded-b86c-4f2a-bed2-510257b8bfe6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "0a80e666-9ebd-48f8-8245-bdc7d6e14d67",
+        "formTitle": "Daily Work Summary",
+        "formDescription": "Enter your work activities for today. This will be formatted into a professional email draft.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "What did you work on today?",
+              "fieldType": "textarea",
+              "placeholder": "Describe your activities, achievements, tools used, etc.",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Any notes for the email? (optional)",
+              "fieldType": "textarea",
+              "placeholder": "E.g., specific people to mention, tone adjustments, etc."
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "✅ Got it! Your email draft is being created in Gmail."
+            }
+          }
+        }
+      },
+      "id": "06548c5d-9319-4c8f-aed0-f8e26a22e6f1",
+      "name": "Daily Work Form1",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        592
+      ],
+      "webhookId": "0a80e666-9ebd-48f8-8245-bdc7d6e14d67"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a professional email formatter for daily work progress updates.\n\nFormat the user's work activities into this EXACT structure:\n\n---\nSubject: Progress Update - [Brief Topic] ([Full Date like: Feb 7, 2026])\n\nDear Bharat,\n\nHere's a recap of key activities and achievements today [brief context phrase]:\n\n**[Section Header 1]**\n- Bullet point with achievement/activity\n- Another bullet if needed\n\n**[Section Header 2]** (if applicable)\n- More bullets as needed\n\n[Closing line offering next steps, demos, or asking for feedback]\n\nRegarding SEO, happy to create additional blog posts on other topics—just let me know priorities.\n\nBest,\nAbhay\nBusiness Automation Consultant\nKakinada, Andhra Pradesh\n---\n\nRules:\n- Keep it concise and professional\n- Use 2-4 section headers based on content\n- Each bullet should be one clear achievement\n- Extract the subject topic from the main theme of work done\n- Always include the SEO line before sign-off\n- Output ONLY the email, no extra commentary",
+              "role": "system"
+            },
+            {
+              "content": "=Date: {{ $json['Date'] }}\n\nWork Activities:\n{{ $json['What did you work on today?'] }}\n\n{{ $json['Any notes for the email? (optional)'] ? 'Additional notes: ' + $json['Any notes for the email? (optional)'] : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "6cd14b8c-b272-46fe-8c31-37cfccfdc7be",
+      "name": "Format as Email1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        96,
+        576
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "E6Yr9VhpTqGWiwHI",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract subject line from the formatted email\nconst emailContent = $input.first().json.message.content;\n\n// Find subject line\nconst subjectMatch = emailContent.match(/Subject:\\s*(.+)/i);\nconst subject = subjectMatch ? subjectMatch[1].trim() : 'Progress Update';\n\n// Get email body (everything after Subject line)\nconst bodyStart = emailContent.indexOf('Dear');\nconst body = bodyStart !== -1 ? emailContent.substring(bodyStart) : emailContent;\n\nreturn {\n  subject: subject,\n  body: body,\n  fullEmail: emailContent\n};"
+      },
+      "id": "7ee2a1b2-3503-4f6b-a5df-f3f7e9a3eb64",
+      "name": "Extract Subject & Body1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "createDraft"
+      },
+      "id": "c9e75c9e-7bfc-431c-aa2a-88393cc0f123",
+      "name": "Create Gmail Draft1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        592
+      ],
+      "webhookId": "77f23540-6ef3-4745-b952-cf7276be9ced",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * 1-6"
+            }
+          ]
+        }
+      },
+      "id": "9caa1f29-c3ae-46d8-94a9-5118f913237e",
+      "name": "Daily Reminder (6PM Mon-Sat)1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -112,
+        848
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Work Form1": {
+      "main": [
+        [
+          {
+            "node": "Format as Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format as Email1": {
+      "main": [
+        [
+          {
+            "node": "Extract Subject & Body1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Subject & Body1": {
+      "main": [
+        [
+          {
+            "node": "Create Gmail Draft1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Reminder (6PM Mon-Sat)1": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
