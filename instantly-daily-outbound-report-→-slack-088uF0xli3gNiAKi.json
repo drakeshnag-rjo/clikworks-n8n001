@@ -1,0 +1,374 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutesInterval"
+            }
+          ]
+        }
+      },
+      "id": "e4745007-f47d-44cf-9bea-33b46a257ed0",
+      "name": "Daily 9AM ET",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\nconst allTimeStart = '2024-01-01';\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr,\n    allTimeStart: allTimeStart\n  }\n}];"
+      },
+      "id": "2871181c-d3bb-44ba-a587-b8f9701018f3",
+      "name": "Set Date Variables",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "057c57a5-ef4f-49ff-8de9-6a88d72ac2a4",
+      "name": "Fetch All Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        48
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LXHRv6mgrupMhbRc",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  if (name.toLowerCase().startsWith('company')) {\n    companyCampaigns.push({ id: campaign.id, name: name });\n  } else if (name.toLowerCase().startsWith('people')) {\n    peopleCampaigns.push({ id: campaign.id, name: name });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} people campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "b68efe51-6edd-4b37-bea8-10dca884406d",
+      "name": "Categorize Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/analytics/campaign/daily",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $node['Set Date Variables'].json.yesterday }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $node['Set Date Variables'].json.yesterday }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b25067cc-1289-4a6e-abe9-7069fea6358b",
+      "name": "Fetch Daily Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -64
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LXHRv6mgrupMhbRc",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/analytics/campaign/daily",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $node['Set Date Variables'].json.allTimeStart }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $node['Set Date Variables'].json.today }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da066dbb-96bd-4a39-962c-3ef4847e62ba",
+      "name": "Fetch All-Time Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns'].json;\nconst dateVars = $node['Set Date Variables'].json;\nconst dailyAnalyticsRaw = $node['Fetch Daily Analytics'].json;\nconst API_KEY = $env.INSTANTLY_API_KEY;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\nconst yesterday = dateVars.yesterday;\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\nfunction wasContactedOnDate(lead) {\n  const ts = lead.timestamp_last_step_executed || lead.last_step_timestamp_executed;\n  if (!ts) return false;\n  const d = new Date(ts);\n  return d >= yesterdayStart && d <= yesterdayEnd;\n}\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContactedYesterday = companyLeads.filter(wasContactedOnDate);\nconst peopleContactedYesterday = peopleLeads.filter(wasContactedOnDate);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContactedYesterday) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContactedYesterday) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\nlet dailyReplies = 0;\nlet dailySent = 0;\nconst analyticsData = dailyAnalyticsRaw.data || dailyAnalyticsRaw.items || dailyAnalyticsRaw || [];\nconst analyticsArray = Array.isArray(analyticsData) ? analyticsData : [analyticsData];\nfor (const entry of analyticsArray) {\n  if (!entry || typeof entry !== 'object') continue;\n  dailyReplies += (entry.unique_replies || entry.replies || 0);\n  dailySent += (entry.sent || entry.new_leads_contacted || 0);\n}\n\nconst allContactedYesterday = [...companyContactedYesterday, ...peopleContactedYesterday];\nconst dailyPositiveReplies = allContactedYesterday.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    daily: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: dailyReplies,\n      positiveReplies: dailyPositiveReplies,\n      sent: dailySent,\n      date: yesterday\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContactedYesterday: companyContactedYesterday.length,\n      peopleContactedYesterday: peopleContactedYesterday.length\n    }\n  }\n}];"
+      },
+      "id": "04eb7c7a-8e3d-4dc7-8f62-9aad3f8c7e02",
+      "name": "Daily Leads Fetch & Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -64
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns'].json;\nconst dateVars = $node['Set Date Variables'].json;\nconst allTimeAnalyticsRaw = $node['Fetch All-Time Analytics'].json;\nconst API_KEY = $env.INSTANTLY_API_KEY;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nfunction wasContacted(lead) {\n  return !!(lead.timestamp_last_step_executed || lead.last_step_timestamp_executed);\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContacted = companyLeads.filter(wasContacted);\nconst peopleContacted = peopleLeads.filter(wasContacted);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContacted) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContacted) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\nlet allTimeReplies = 0;\nlet allTimeSent = 0;\nconst analyticsData = allTimeAnalyticsRaw.data || allTimeAnalyticsRaw.items || allTimeAnalyticsRaw || [];\nconst analyticsArray = Array.isArray(analyticsData) ? analyticsData : [analyticsData];\nfor (const entry of analyticsArray) {\n  if (!entry || typeof entry !== 'object') continue;\n  allTimeReplies += (entry.unique_replies || entry.replies || 0);\n  allTimeSent += (entry.sent || entry.new_leads_contacted || 0);\n}\n\nconst allContacted = [...companyContacted, ...peopleContacted];\nconst allTimePositiveReplies = allContacted.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    allTime: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: allTimeReplies,\n      positiveReplies: allTimePositiveReplies,\n      sent: allTimeSent\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContacted: companyContacted.length,\n      peopleContacted: peopleContacted.length\n    }\n  }\n}];"
+      },
+      "id": "fbe2250a-a77f-4cf2-9838-eb9419391e83",
+      "name": "All-Time Leads Fetch & Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        144
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      },
+      "id": "d3ff2650-e514-4789-8439-e0c06f363e86",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        688,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input1 = $input.all()[0]?.json || {};\nconst input2 = $input.all()[1]?.json || {};\n\nconst daily = input1.daily || input2.daily || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0, date: 'N/A'\n};\nconst allTime = input1.allTime || input2.allTime || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0\n};\n\nconst dailyPositiveRate = daily.replies > 0\n  ? ((daily.positiveReplies / daily.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst allTimePositiveRate = allTime.replies > 0\n  ? ((allTime.positiveReplies / allTime.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*Outbound Report - ${daily.date}*`,\n  '',\n  '*:calendar: Yesterday*',\n  `> *Unique Companies:* ${fmt(daily.uniqueCompanies)}    |    *Unique People:* ${fmt(daily.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(daily.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(daily.sent)}`,\n  `> *Replies:* ${fmt(daily.replies)}    |    *Positive Replies:* ${fmt(daily.positiveReplies)} (${dailyPositiveRate}%)`,\n  '',\n  '*:chart_with_upwards_trend: All-Time*',\n  `> *Unique Companies:* ${fmt(allTime.uniqueCompanies)}    |    *Unique People:* ${fmt(allTime.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(allTime.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(allTime.sent)}`,\n  `> *Replies:* ${fmt(allTime.replies)}    |    *Positive Replies:* ${fmt(allTime.positiveReplies)} (${allTimePositiveRate}%)`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText } }];"
+      },
+      "id": "9e15acc6-5c08-4e4f-ab4c-a8ad5fe29457",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "38a3e459-330d-44a4-a83e-175bbee1658d",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        48
+      ],
+      "webhookId": "cc48bc79-9238-4d74-9095-f14e2cc20a2f"
+    },
+    {
+      "parameters": {},
+      "id": "aa2e80d1-107f-4e7d-bdc4-7dcf0fd2bd6e",
+      "name": "On Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        912,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "text": ":warning: *Outbound Report FAILED*\n\nPlease check the n8n execution log.",
+        "otherOptions": {}
+      },
+      "id": "47914b82-d021-4a3a-9ac3-23dd0a41f41e",
+      "name": "Send Error to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        240
+      ],
+      "webhookId": "dc7e873d-3a98-46e4-840b-d9232f77c7cc"
+    }
+  ],
+  "connections": {
+    "Daily 9AM ET": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Analytics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All-Time Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Analytics": {
+      "main": [
+        [
+          {
+            "node": "Daily Leads Fetch & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All-Time Analytics": {
+      "main": [
+        [
+          {
+            "node": "All-Time Leads Fetch & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Leads Fetch & Dedup": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All-Time Leads Fetch & Dedup": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On Error": {
+      "main": [
+        [
+          {
+            "node": "Send Error to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
