@@ -62,8 +62,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "LXHRv6mgrupMhbRc",
-          "name": "Header Auth account 2"
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
         }
       }
     },
@@ -82,7 +82,7 @@
     },
     {
       "parameters": {
-        "url": "https://api.instantly.ai/api/v2/analytics/campaign/daily",
+        "url": "https://api.instantly.ai/api/v2/analytics/daily",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -110,8 +110,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "LXHRv6mgrupMhbRc",
-          "name": "Header Auth account 2"
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
         }
       }
     },
@@ -142,7 +142,13 @@
       "position": [
         240,
         144
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
     },
     {
       "parameters": {
@@ -201,6 +207,14 @@
     },
     {
       "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
         "text": "={{ $json.messageText }}",
         "otherOptions": {}
       },
@@ -212,7 +226,13 @@
         1120,
         48
       ],
-      "webhookId": "cc48bc79-9238-4d74-9095-f14e2cc20a2f"
+      "webhookId": "cc48bc79-9238-4d74-9095-f14e2cc20a2f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
     },
     {
       "parameters": {},
@@ -239,6 +259,225 @@
         240
       ],
       "webhookId": "dc7e873d-3a98-46e4-840b-d9232f77c7cc"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "5c223f55-8619-46bf-99e2-afc0147c973f",
+      "name": "Daily 9AM ET1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\nconst allTimeStart = '2024-01-01';\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr,\n    allTimeStart: allTimeStart\n  }\n}];"
+      },
+      "id": "c286b99c-238e-4fea-b054-aacffd010ff7",
+      "name": "Set Date Variables1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0ef4729-2ac3-4c45-bca9-8386d4e5360d",
+      "name": "Fetch All Campaigns1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -528
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ id: campaign.id, name: name });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ id: campaign.id, name: name });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "56600455-f810-4837-82cf-873769c753e5",
+      "name": "Categorize Campaigns1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns1'].json;\nconst dateVars = $node['Set Date Variables1'].json;\nconst dailyAnalyticsItems = $input.all();\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\nconst yesterday = dateVars.yesterday;\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\nfunction wasContactedOnDate(lead) {\n  const ts = lead.timestamp_last_step_executed || lead.last_step_timestamp_executed;\n  if (!ts) return false;\n  const d = new Date(ts);\n  return d >= yesterdayStart && d <= yesterdayEnd;\n}\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContactedYesterday = companyLeads.filter(wasContactedOnDate);\nconst peopleContactedYesterday = peopleLeads.filter(wasContactedOnDate);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContactedYesterday) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContactedYesterday) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\n// Process analytics data from native Instantly node\nlet dailyReplies = 0;\nlet dailySent = 0;\n\n// Get all campaign analytics items\nconst allCampaignIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst campaignIdSet = new Set(allCampaignIds);\n\n// Sum up metrics from matching campaigns\nfor (const item of dailyAnalyticsItems) {\n  const campaign = item.json;\n  if (campaign && campaign.campaign_id && campaignIdSet.has(campaign.campaign_id)) {\n    // Use reply_count from the native node response\n    dailyReplies += (campaign.reply_count || campaign.reply_count_unique || 0);\n    // Use emails_sent_count or new_leads_contacted_count\n    dailySent += (campaign.emails_sent_count || campaign.new_leads_contacted_count || 0);\n  }\n}\n\nconst allContactedYesterday = [...companyContactedYesterday, ...peopleContactedYesterday];\nconst dailyPositiveReplies = allContactedYesterday.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    daily: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: dailyReplies,\n      positiveReplies: dailyPositiveReplies,\n      sent: dailySent,\n      date: yesterday\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContactedYesterday: companyContactedYesterday.length,\n      peopleContactedYesterday: peopleContactedYesterday.length\n    }\n  }\n}];\n"
+      },
+      "id": "447eef5d-da79-4260-8b11-b950ec805c74",
+      "name": "Daily Leads Fetch & Dedup1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns1'].json;\nconst allTimeAnalyticsItems = $input.all();\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nfunction wasContacted(lead) {\n  return !!(lead.timestamp_last_step_executed || lead.last_step_timestamp_executed);\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContacted = companyLeads.filter(wasContacted);\nconst peopleContacted = peopleLeads.filter(wasContacted);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContacted) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContacted) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\n// Process analytics data from native Instantly node\nlet allTimeReplies = 0;\nlet allTimeSent = 0;\n\n// Get all campaign analytics items\nconst allCampaignIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst campaignIdSet = new Set(allCampaignIds);\n\n// Sum up metrics from matching campaigns\nfor (const item of allTimeAnalyticsItems) {\n  const campaign = item.json;\n  if (campaign && campaign.campaign_id && campaignIdSet.has(campaign.campaign_id)) {\n    // Use reply_count from the native node response\n    allTimeReplies += (campaign.reply_count || campaign.reply_count_unique || 0);\n    // Use emails_sent_count or new_leads_contacted_count\n    allTimeSent += (campaign.emails_sent_count || campaign.new_leads_contacted_count || 0);\n  }\n}\n\nconst allContacted = [...companyContacted, ...peopleContacted];\nconst allTimePositiveReplies = allContacted.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    allTime: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: allTimeReplies,\n      positiveReplies: allTimePositiveReplies,\n      sent: allTimeSent\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContacted: companyContacted.length,\n      peopleContacted: peopleContacted.length\n    }\n  }\n}];\n"
+      },
+      "id": "d61ffea1-2e91-48db-b4c7-f4f1cb74a4d3",
+      "name": "All-Time Leads Fetch & Dedup1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -432
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3e84361c-8581-4bc7-9246-d2d8be23f0d4",
+      "name": "Merge Results1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input1 = $input.all()[0]?.json || {};\nconst input2 = $input.all()[1]?.json || {};\n\nconst daily = input1.daily || input2.daily || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0, date: 'N/A'\n};\nconst allTime = input1.allTime || input2.allTime || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0\n};\n\nconst dailyPositiveRate = daily.replies > 0\n  ? ((daily.positiveReplies / daily.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst allTimePositiveRate = allTime.replies > 0\n  ? ((allTime.positiveReplies / allTime.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*Outbound Report - ${daily.date}*`,\n  '',\n  '*:calendar: Yesterday*',\n  `> *Unique Companies:* ${fmt(daily.uniqueCompanies)}    |    *Unique People:* ${fmt(daily.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(daily.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(daily.sent)}`,\n  `> *Replies:* ${fmt(daily.replies)}    |    *Positive Replies:* ${fmt(daily.positiveReplies)} (${dailyPositiveRate}%)`,\n  '',\n  '*:chart_with_upwards_trend: All-Time*',\n  `> *Unique Companies:* ${fmt(allTime.uniqueCompanies)}    |    *Unique People:* ${fmt(allTime.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(allTime.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(allTime.sent)}`,\n  `> *Replies:* ${fmt(allTime.replies)}    |    *Positive Replies:* ${fmt(allTime.positiveReplies)} (${allTimePositiveRate}%)`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText } }];"
+      },
+      "id": "08e6eb5e-bda1-400d-8d70-7eac15e538e6",
+      "name": "Format Slack Message1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KMBBMCR0",
+          "mode": "list",
+          "cachedResultName": "instantly-report"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "611350e0-2867-44b4-bde6-6435ad58031b",
+      "name": "Send to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1088,
+        -528
+      ],
+      "webhookId": "1fa3d01c-5a1f-4225-9009-1c387ddecf42",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": ":warning: *Outbound Report FAILED*\n\nPlease check the n8n execution log.",
+        "otherOptions": {}
+      },
+      "id": "5ea7e95f-9717-47bf-9769-95b029f895f6",
+      "name": "Send Error to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        -192
+      ],
+      "webhookId": "cc74b577-2980-41da-81c0-c98671b743e1"
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $node['Set Date Variables1'].json.allTimeStart }}",
+        "endDate": "={{ $node['Set Date Variables1'].json.today }}"
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -432
+      ],
+      "id": "3bf32e3d-5437-4960-b46b-fdb094cc1d72",
+      "name": "Fetch All-Time Analytics1",
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $node['Set Date Variables1'].json.yesterday }}",
+        "endDate": "={{ $node['Set Date Variables1'].json.yesterday }}"
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -640
+      ],
+      "id": "bd0b8475-b764-489a-b8d7-124553da2982",
+      "name": "Fetch Daily Analytics2",
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
     }
   ],
   "connections": {
@@ -367,8 +606,1472 @@
           }
         ]
       ]
+    },
+    "Daily 9AM ET1": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables1": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns1": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Analytics2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All-Time Analytics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Leads Fetch & Dedup1": {
+      "main": [
+        [
+          {
+            "node": "Merge Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All-Time Leads Fetch & Dedup1": {
+      "main": [
+        [
+          {
+            "node": "Merge Results1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results1": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message1": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All-Time Analytics1": {
+      "main": [
+        [
+          {
+            "node": "All-Time Leads Fetch & Dedup1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Analytics2": {
+      "main": [
+        [
+          {
+            "node": "Daily Leads Fetch & Dedup1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "pinData": {},
+  "pinData": {
+    "Fetch Daily Analytics2": [
+      {
+        "json": {
+          "campaign_name": "Companies | Email V1 | Jan 29th, 2026 | BATCH 2 Inboxes",
+          "campaign_id": "cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 2199,
+          "contacted_count": 281,
+          "emails_sent_count": 281,
+          "new_leads_contacted_count": 281,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 20,
+          "unsubscribed_count": 0,
+          "completed_count": 688,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 3,
+          "reply_count_unique_by_step": 3,
+          "reply_count_automatic": 4,
+          "reply_count_automatic_unique": 4,
+          "reply_count_automatic_unique_by_step": 4,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Personal | Email V4 (Direct) | Feb 12th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "bf19fef1-7545-41d8-96c9-0bae5b8831e8",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 893,
+          "contacted_count": 145,
+          "emails_sent_count": 145,
+          "new_leads_contacted_count": 145,
+          "open_count": 0,
+          "reply_count": 2,
+          "link_click_count": 0,
+          "bounced_count": 25,
+          "unsubscribed_count": 0,
+          "completed_count": 236,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 2,
+          "reply_count_unique_by_step": 2,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Companies | Email V2 | Feb 4th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "45385e29-2383-4e75-9bd5-50fb9ec4db3b",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 640,
+          "contacted_count": 107,
+          "emails_sent_count": 107,
+          "new_leads_contacted_count": 0,
+          "open_count": 0,
+          "reply_count": 1,
+          "link_click_count": 0,
+          "bounced_count": 0,
+          "unsubscribed_count": 0,
+          "completed_count": 284,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 1,
+          "reply_count_unique_by_step": 1,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Fetch All-Time Analytics1": [
+      {
+        "json": {
+          "campaign_name": "Companies | Email V1 | Jan 29th, 2026 | BATCH 2 Inboxes",
+          "campaign_id": "cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 2199,
+          "contacted_count": 3509,
+          "emails_sent_count": 3573,
+          "new_leads_contacted_count": 2041,
+          "open_count": 0,
+          "reply_count": 36,
+          "link_click_count": 0,
+          "bounced_count": 70,
+          "unsubscribed_count": 0,
+          "completed_count": 688,
+          "total_opportunities": 16,
+          "total_opportunity_value": 8500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 32,
+          "reply_count_unique_by_step": 32,
+          "reply_count_automatic": 23,
+          "reply_count_automatic_unique": 23,
+          "reply_count_automatic_unique_by_step": 23,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "1. SEC Batch 1 - Chuck Copy 1",
+          "campaign_id": "c8d2201c-fe78-405c-bf1f-66b28a2406e9",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 3285,
+          "emails_sent_count": 3285,
+          "new_leads_contacted_count": 1153,
+          "open_count": 0,
+          "reply_count": 82,
+          "link_click_count": 0,
+          "bounced_count": 48,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 25,
+          "total_opportunity_value": 27000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 70,
+          "reply_count_unique_by_step": 70,
+          "reply_count_automatic": 10,
+          "reply_count_automatic_unique": 10,
+          "reply_count_automatic_unique_by_step": 10,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "3. SEC Batch 3 - Chuck Copy 1 (Multiple Emails)",
+          "campaign_id": "a4ae02bd-f5a8-4cb7-a554-490980f69c9c",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 3119,
+          "emails_sent_count": 3119,
+          "new_leads_contacted_count": 1099,
+          "open_count": 0,
+          "reply_count": 63,
+          "link_click_count": 0,
+          "bounced_count": 72,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 10,
+          "total_opportunity_value": 10000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 47,
+          "reply_count_unique_by_step": 47,
+          "reply_count_automatic": 11,
+          "reply_count_automatic_unique": 10,
+          "reply_count_automatic_unique_by_step": 10,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Auto suggestion Offer - Corporate - ON",
+          "campaign_id": "619e5be3-e191-4363-83f5-5051028fdea7",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 12,
+          "contacted_count": 3012,
+          "emails_sent_count": 3012,
+          "new_leads_contacted_count": 833,
+          "open_count": 306,
+          "reply_count": 5,
+          "link_click_count": 0,
+          "bounced_count": 40,
+          "unsubscribed_count": 0,
+          "completed_count": 10,
+          "total_opportunities": 3,
+          "total_opportunity_value": 1500,
+          "open_count_unique": 242,
+          "open_count_unique_by_step": 242,
+          "reply_count_unique": 5,
+          "reply_count_unique_by_step": 5,
+          "reply_count_automatic": 5,
+          "reply_count_automatic_unique": 5,
+          "reply_count_automatic_unique_by_step": 5,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (copy)",
+          "campaign_id": "ecdb3398-98ba-4b79-9d82-48e65737480d",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 62,
+          "contacted_count": 2673,
+          "emails_sent_count": 2673,
+          "new_leads_contacted_count": 818,
+          "open_count": 89,
+          "reply_count": 22,
+          "link_click_count": 0,
+          "bounced_count": 41,
+          "unsubscribed_count": 0,
+          "completed_count": 21,
+          "total_opportunities": 6,
+          "total_opportunity_value": 3500,
+          "open_count_unique": 86,
+          "open_count_unique_by_step": 86,
+          "reply_count_unique": 19,
+          "reply_count_unique_by_step": 19,
+          "reply_count_automatic": 5,
+          "reply_count_automatic_unique": 4,
+          "reply_count_automatic_unique_by_step": 4,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate (Updated Offer) - Re Targeting",
+          "campaign_id": "59b67658-25b6-489d-b628-76884e43a33a",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 18,
+          "contacted_count": 1918,
+          "emails_sent_count": 1919,
+          "new_leads_contacted_count": 644,
+          "open_count": 0,
+          "reply_count": 4,
+          "link_click_count": 0,
+          "bounced_count": 6,
+          "unsubscribed_count": 0,
+          "completed_count": 12,
+          "total_opportunities": 1,
+          "total_opportunity_value": 500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 4,
+          "reply_count_unique_by_step": 4,
+          "reply_count_automatic": 10,
+          "reply_count_automatic_unique": 10,
+          "reply_count_automatic_unique_by_step": 10,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Auto suggestion Offer - Corporate - Google",
+          "campaign_id": "955f7418-e2ad-4d19-868d-65e3da78972d",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 64,
+          "contacted_count": 1866,
+          "emails_sent_count": 1866,
+          "new_leads_contacted_count": 664,
+          "open_count": 896,
+          "reply_count": 5,
+          "link_click_count": 0,
+          "bounced_count": 58,
+          "unsubscribed_count": 0,
+          "completed_count": 14,
+          "total_opportunities": 2,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 523,
+          "open_count_unique_by_step": 569,
+          "reply_count_unique": 5,
+          "reply_count_unique_by_step": 5,
+          "reply_count_automatic": 12,
+          "reply_count_automatic_unique": 12,
+          "reply_count_automatic_unique_by_step": 12,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - PDF Focused",
+          "campaign_id": "526308d2-17de-4089-9b1d-13dbefb54f83",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 295,
+          "contacted_count": 1816,
+          "emails_sent_count": 1816,
+          "new_leads_contacted_count": 525,
+          "open_count": 19,
+          "reply_count": 17,
+          "link_click_count": 0,
+          "bounced_count": 29,
+          "unsubscribed_count": 0,
+          "completed_count": 12,
+          "total_opportunities": 4,
+          "total_opportunity_value": 3000,
+          "open_count_unique": 17,
+          "open_count_unique_by_step": 17,
+          "reply_count_unique": 13,
+          "reply_count_unique_by_step": 13,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Companies with Bad Press - Call Focused",
+          "campaign_id": "72d3f2f7-f1b0-4013-b5cd-551a7b3ce243",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 105,
+          "contacted_count": 1586,
+          "emails_sent_count": 1586,
+          "new_leads_contacted_count": 349,
+          "open_count": 57,
+          "reply_count": 11,
+          "link_click_count": 0,
+          "bounced_count": 14,
+          "unsubscribed_count": 0,
+          "completed_count": 3,
+          "total_opportunities": 1,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 44,
+          "open_count_unique_by_step": 44,
+          "reply_count_unique": 8,
+          "reply_count_unique_by_step": 8,
+          "reply_count_automatic": 21,
+          "reply_count_automatic_unique": 13,
+          "reply_count_automatic_unique_by_step": 13,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "SEC",
+          "campaign_id": "c7035d6f-f852-4cd9-9678-cbfa1795c727",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 173,
+          "contacted_count": 1519,
+          "emails_sent_count": 1520,
+          "new_leads_contacted_count": 474,
+          "open_count": 0,
+          "reply_count": 43,
+          "link_click_count": 0,
+          "bounced_count": 39,
+          "unsubscribed_count": 0,
+          "completed_count": 17,
+          "total_opportunities": 23,
+          "total_opportunity_value": 12500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 32,
+          "reply_count_unique_by_step": 32,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Companies with Bad Press - PDF Focused",
+          "campaign_id": "7213afc3-fe6f-4317-82dc-c10ee02540d9",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 47,
+          "contacted_count": 1465,
+          "emails_sent_count": 1465,
+          "new_leads_contacted_count": 416,
+          "open_count": 170,
+          "reply_count": 5,
+          "link_click_count": 0,
+          "bounced_count": 14,
+          "unsubscribed_count": 0,
+          "completed_count": 5,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 139,
+          "open_count_unique_by_step": 139,
+          "reply_count_unique": 5,
+          "reply_count_unique_by_step": 5,
+          "reply_count_automatic": 13,
+          "reply_count_automatic_unique": 13,
+          "reply_count_automatic_unique_by_step": 13,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Companies | Email V2 | Feb 4th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "45385e29-2383-4e75-9bd5-50fb9ec4db3b",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 640,
+          "contacted_count": 1002,
+          "emails_sent_count": 1450,
+          "new_leads_contacted_count": 639,
+          "open_count": 0,
+          "reply_count": 7,
+          "link_click_count": 0,
+          "bounced_count": 35,
+          "unsubscribed_count": 0,
+          "completed_count": 284,
+          "total_opportunities": 3,
+          "total_opportunity_value": 1500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 7,
+          "reply_count_unique_by_step": 7,
+          "reply_count_automatic": 13,
+          "reply_count_automatic_unique": 13,
+          "reply_count_automatic_unique_by_step": 13,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Auto suggestion Offer - Individuals -Google",
+          "campaign_id": "be005af8-8d29-417e-af04-614db1bb51f1",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 1236,
+          "emails_sent_count": 1236,
+          "new_leads_contacted_count": 460,
+          "open_count": 474,
+          "reply_count": 2,
+          "link_click_count": 0,
+          "bounced_count": 10,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 1,
+          "total_opportunity_value": 500,
+          "open_count_unique": 394,
+          "open_count_unique_by_step": 402,
+          "reply_count_unique": 2,
+          "reply_count_unique_by_step": 2,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate - New copy",
+          "campaign_id": "3024b63d-4cf2-480c-9a38-a28a0b2689c5",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 7,
+          "contacted_count": 1113,
+          "emails_sent_count": 1113,
+          "new_leads_contacted_count": 374,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 3,
+          "unsubscribed_count": 0,
+          "completed_count": 4,
+          "total_opportunities": 1,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 3,
+          "reply_count_unique_by_step": 3,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate (Updated Offer)",
+          "campaign_id": "741c11e2-d07c-4eed-8afa-49a44c7708b6",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 56,
+          "contacted_count": 1078,
+          "emails_sent_count": 1078,
+          "new_leads_contacted_count": 424,
+          "open_count": 0,
+          "reply_count": 19,
+          "link_click_count": 0,
+          "bounced_count": 56,
+          "unsubscribed_count": 0,
+          "completed_count": 9,
+          "total_opportunities": 5,
+          "total_opportunity_value": 2500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 15,
+          "reply_count_unique_by_step": 15,
+          "reply_count_automatic": 4,
+          "reply_count_automatic_unique": 4,
+          "reply_count_automatic_unique_by_step": 4,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Personal | Email V3 (Story Telling) | Feb 2nd, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "8b045d3a-2b31-4ecc-999d-6e2deeac7f0d",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 348,
+          "contacted_count": 990,
+          "emails_sent_count": 993,
+          "new_leads_contacted_count": 348,
+          "open_count": 0,
+          "reply_count": 6,
+          "link_click_count": 0,
+          "bounced_count": 24,
+          "unsubscribed_count": 0,
+          "completed_count": 324,
+          "total_opportunities": 2,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 5,
+          "reply_count_unique_by_step": 5,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "SEC (copy) 12/4/2025",
+          "campaign_id": "18a5011e-97d5-49af-bf87-7acf4d3c5982",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 26,
+          "contacted_count": 854,
+          "emails_sent_count": 854,
+          "new_leads_contacted_count": 228,
+          "open_count": 0,
+          "reply_count": 28,
+          "link_click_count": 0,
+          "bounced_count": 9,
+          "unsubscribed_count": 0,
+          "completed_count": 17,
+          "total_opportunities": 10,
+          "total_opportunity_value": 5000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 22,
+          "reply_count_unique_by_step": 22,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Auto suggestion Offer - Corporate - New (copy)",
+          "campaign_id": "373dd9bb-b81a-4d20-ac9d-4a18fd4c7a0e",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 23,
+          "contacted_count": 816,
+          "emails_sent_count": 816,
+          "new_leads_contacted_count": 217,
+          "open_count": 0,
+          "reply_count": 1,
+          "link_click_count": 0,
+          "bounced_count": 16,
+          "unsubscribed_count": 0,
+          "completed_count": 1,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 1,
+          "reply_count_unique_by_step": 1,
+          "reply_count_automatic": 6,
+          "reply_count_automatic_unique": 6,
+          "reply_count_automatic_unique_by_step": 6,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "6 FINRA Batch 1 - Chuck Copy 2 (Multiple Emails)",
+          "campaign_id": "3e81e845-d5fc-4096-acda-a344ea743dad",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 743,
+          "emails_sent_count": 743,
+          "new_leads_contacted_count": 258,
+          "open_count": 0,
+          "reply_count": 27,
+          "link_click_count": 0,
+          "bounced_count": 4,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 10,
+          "total_opportunity_value": 10000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 21,
+          "reply_count_unique_by_step": 21,
+          "reply_count_automatic": 4,
+          "reply_count_automatic_unique": 4,
+          "reply_count_automatic_unique_by_step": 4,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "4 FTC/CFTC Batch 1 - Chuck Copy 1",
+          "campaign_id": "264d6b71-f552-474e-90ba-ae3405860c99",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 728,
+          "emails_sent_count": 728,
+          "new_leads_contacted_count": 251,
+          "open_count": 0,
+          "reply_count": 21,
+          "link_click_count": 0,
+          "bounced_count": 4,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 9,
+          "total_opportunity_value": 9000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 20,
+          "reply_count_unique_by_step": 20,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "7 FINRA Batch 2 (GHL) - Chuck Copy 2 (Multiple Emails)",
+          "campaign_id": "d5efe7d3-a817-4e4d-b43d-bfa77bb046b3",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 712,
+          "emails_sent_count": 712,
+          "new_leads_contacted_count": 242,
+          "open_count": 0,
+          "reply_count": 20,
+          "link_click_count": 0,
+          "bounced_count": 1,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 5,
+          "total_opportunity_value": 5000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 20,
+          "reply_count_unique_by_step": 20,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "SEC (copy) 1/15/2025",
+          "campaign_id": "8a544c8c-bef9-4513-92e4-0f0a973ae07e",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 22,
+          "contacted_count": 652,
+          "emails_sent_count": 653,
+          "new_leads_contacted_count": 177,
+          "open_count": 0,
+          "reply_count": 23,
+          "link_click_count": 0,
+          "bounced_count": 10,
+          "unsubscribed_count": 0,
+          "completed_count": 12,
+          "total_opportunities": 9,
+          "total_opportunity_value": 4500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 14,
+          "reply_count_unique_by_step": 14,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "5 FTC/CFTC Batch 1 - Chuck Copy 1 (Multiple Emails)",
+          "campaign_id": "ca99e0fe-df78-48e0-b15c-b07446fdba72",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 537,
+          "emails_sent_count": 537,
+          "new_leads_contacted_count": 180,
+          "open_count": 0,
+          "reply_count": 5,
+          "link_click_count": 0,
+          "bounced_count": 0,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 2,
+          "total_opportunity_value": 2000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 4,
+          "reply_count_unique_by_step": 4,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate - New Copy Test 1",
+          "campaign_id": "4197c318-edf6-42d0-81ae-92165a64bab8",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 10,
+          "contacted_count": 537,
+          "emails_sent_count": 537,
+          "new_leads_contacted_count": 141,
+          "open_count": 0,
+          "reply_count": 1,
+          "link_click_count": 0,
+          "bounced_count": 8,
+          "unsubscribed_count": 0,
+          "completed_count": 2,
+          "total_opportunities": 1,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 1,
+          "reply_count_unique_by_step": 1,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate (Updated Offer) - 2 (11/18/25 leads)",
+          "campaign_id": "bdc093b2-8fd6-4630-b177-dcc16ecd57cc",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 26,
+          "contacted_count": 501,
+          "emails_sent_count": 501,
+          "new_leads_contacted_count": 181,
+          "open_count": 0,
+          "reply_count": 6,
+          "link_click_count": 0,
+          "bounced_count": 17,
+          "unsubscribed_count": 0,
+          "completed_count": 9,
+          "total_opportunities": 3,
+          "total_opportunity_value": 2000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 6,
+          "reply_count_unique_by_step": 6,
+          "reply_count_automatic": 3,
+          "reply_count_automatic_unique": 3,
+          "reply_count_automatic_unique_by_step": 3,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Auto suggestion Offer - Corporate - Microsoft",
+          "campaign_id": "616d2617-081e-4703-b160-9f0fd3f45fbb",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 7,
+          "contacted_count": 360,
+          "emails_sent_count": 360,
+          "new_leads_contacted_count": 93,
+          "open_count": 75,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 7,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 52,
+          "open_count_unique_by_step": 52,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Personal | Email V4 (Direct) | Feb 12th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "bf19fef1-7545-41d8-96c9-0bae5b8831e8",
+          "campaign_status": 1,
+          "campaign_is_evergreen": false,
+          "leads_count": 893,
+          "contacted_count": 279,
+          "emails_sent_count": 279,
+          "new_leads_contacted_count": 279,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 44,
+          "unsubscribed_count": 0,
+          "completed_count": 236,
+          "total_opportunities": 2,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 3,
+          "reply_count_unique_by_step": 3,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "2. SEC Batch 2- BD Copy 1",
+          "campaign_id": "b4654ca7-c1b8-4a15-9aca-3b4f8420c469",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 240,
+          "emails_sent_count": 240,
+          "new_leads_contacted_count": 85,
+          "open_count": 0,
+          "reply_count": 4,
+          "link_click_count": 0,
+          "bounced_count": 2,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 1,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 4,
+          "reply_count_unique_by_step": 4,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (1st list) (New Accounts)",
+          "campaign_id": "be5bd03a-db48-40e5-8e3e-7ba33cfcb17a",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 249,
+          "contacted_count": 235,
+          "emails_sent_count": 235,
+          "new_leads_contacted_count": 235,
+          "open_count": 61,
+          "reply_count": 1,
+          "link_click_count": 0,
+          "bounced_count": 12,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 60,
+          "open_count_unique_by_step": 60,
+          "reply_count_unique": 1,
+          "reply_count_unique_by_step": 1,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (New list) (New Accounts) (copy)",
+          "campaign_id": "bbc28a02-8369-470a-99e1-bb13826af138",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 264,
+          "contacted_count": 229,
+          "emails_sent_count": 229,
+          "new_leads_contacted_count": 229,
+          "open_count": 46,
+          "reply_count": 1,
+          "link_click_count": 0,
+          "bounced_count": 11,
+          "unsubscribed_count": 0,
+          "completed_count": 1,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 46,
+          "open_count_unique_by_step": 46,
+          "reply_count_unique": 1,
+          "reply_count_unique_by_step": 1,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Personal | Email V2 (Pain Hook) | Jan 28th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "f3c6666d-d312-44ea-bf5d-36dab3c14ca1",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 359,
+          "contacted_count": 219,
+          "emails_sent_count": 219,
+          "new_leads_contacted_count": 219,
+          "open_count": 0,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 11,
+          "unsubscribed_count": 0,
+          "completed_count": 208,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Personal | Email V1 (Plain) | Jan 28th, 2026 | BATCH 1 Inboxes",
+          "campaign_id": "0bf95669-db4b-4d67-82cc-907e002c4bb8",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 354,
+          "contacted_count": 216,
+          "emails_sent_count": 216,
+          "new_leads_contacted_count": 216,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 2,
+          "unsubscribed_count": 0,
+          "completed_count": 214,
+          "total_opportunities": 1,
+          "total_opportunity_value": 500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 2,
+          "reply_count_unique_by_step": 2,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "SEC (copy) 12/18/2025",
+          "campaign_id": "55a5ba07-a7d0-47c5-86d0-bac614a58874",
+          "campaign_status": 3,
+          "campaign_is_evergreen": false,
+          "leads_count": 6,
+          "contacted_count": 199,
+          "emails_sent_count": 199,
+          "new_leads_contacted_count": 54,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 4,
+          "unsubscribed_count": 0,
+          "completed_count": 2,
+          "total_opportunities": 2,
+          "total_opportunity_value": 1000,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 2,
+          "reply_count_unique_by_step": 2,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (New list) (Old Accounts)",
+          "campaign_id": "bda91f82-89fa-4e5e-81d8-8e13b33bd952",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 208,
+          "contacted_count": 163,
+          "emails_sent_count": 163,
+          "new_leads_contacted_count": 163,
+          "open_count": 2,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 7,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 2,
+          "open_count_unique_by_step": 2,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Corporate (Updated Offer) - 1",
+          "campaign_id": "b150868f-de12-44a1-98f5-9ab13855ac75",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 36,
+          "contacted_count": 160,
+          "emails_sent_count": 160,
+          "new_leads_contacted_count": 160,
+          "open_count": 0,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 2,
+          "unsubscribed_count": 0,
+          "completed_count": 1,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 1,
+          "reply_count_automatic_unique": 1,
+          "reply_count_automatic_unique_by_step": 1,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "SEC (copy) 12/12/2025",
+          "campaign_id": "a57b4b3e-6fe8-432c-99ca-547d18856c41",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 5,
+          "contacted_count": 115,
+          "emails_sent_count": 116,
+          "new_leads_contacted_count": 32,
+          "open_count": 0,
+          "reply_count": 3,
+          "link_click_count": 0,
+          "bounced_count": 3,
+          "unsubscribed_count": 0,
+          "completed_count": 2,
+          "total_opportunities": 1,
+          "total_opportunity_value": 500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 3,
+          "reply_count_unique_by_step": 3,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (1st list) (Old Accounts)",
+          "campaign_id": "38b5cda1-2f95-4255-9747-5257deb42a27",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 323,
+          "contacted_count": 96,
+          "emails_sent_count": 96,
+          "new_leads_contacted_count": 96,
+          "open_count": 0,
+          "reply_count": 2,
+          "link_click_count": 0,
+          "bounced_count": 1,
+          "unsubscribed_count": 0,
+          "completed_count": 2,
+          "total_opportunities": 1,
+          "total_opportunity_value": 500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 2,
+          "reply_count_unique_by_step": 2,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Individuals with Bad Press - Call Focused (1)",
+          "campaign_id": "9a309256-b5a7-4864-9975-a022d70661bf",
+          "campaign_status": 2,
+          "campaign_is_evergreen": false,
+          "leads_count": 81,
+          "contacted_count": 81,
+          "emails_sent_count": 81,
+          "new_leads_contacted_count": 81,
+          "open_count": 0,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 2,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 0,
+          "total_opportunity_value": 0,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "campaign_name": "Test (Bharat)",
+          "campaign_id": "8410dfe4-facd-4a4a-badf-8ee436017b6f",
+          "campaign_status": 0,
+          "campaign_is_evergreen": false,
+          "leads_count": 0,
+          "contacted_count": 0,
+          "emails_sent_count": 0,
+          "new_leads_contacted_count": 0,
+          "open_count": 0,
+          "reply_count": 0,
+          "link_click_count": 0,
+          "bounced_count": 1,
+          "unsubscribed_count": 0,
+          "completed_count": 0,
+          "total_opportunities": 2,
+          "total_opportunity_value": 1500,
+          "open_count_unique": 0,
+          "open_count_unique_by_step": 0,
+          "reply_count_unique": 0,
+          "reply_count_unique_by_step": 0,
+          "reply_count_automatic": 0,
+          "reply_count_automatic_unique": 0,
+          "reply_count_automatic_unique_by_step": 0,
+          "link_click_count_unique": 0,
+          "link_click_count_unique_by_step": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "meta": {}
 }
