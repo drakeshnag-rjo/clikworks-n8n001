@@ -1,0 +1,254 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Calculate yesterday's date range\n  const d = new Date();\n  d.setDate(d.getDate() - 0);\n  const dateStr = d.toISOString().split('T')[0];\n  const startDate = new Date(dateStr + 'T00:00:00Z');\n  const endDate = new Date(dateStr + 'T23:59:59Z');\n\n  // Get all items from input\n  const allItems = $input.all();\n\n  // Collect all leads from items arrays\n  let allLeads = [];\n  allItems.forEach(item => {\n    if (item.json && item.json.items && Array.isArray(item.json.items)) {\n      allLeads = allLeads.concat(item.json.items);\n    }\n  });\n\n  // Filter for leads that became interested yesterday\n  const filteredLeads = allLeads.filter(lead => {\n    if (!lead.timestamp_last_interest_change) return false;\n    const interestDate = new Date(lead.timestamp_last_interest_change);\n    return interestDate >= startDate && interestDate <= endDate;\n  });\n\n  const totalInterested = filteredLeads.length;\n\n  return {\n    json: {\n      positive_reply_count: totalInterested,\n      leads: filteredLeads\n    }\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        304
+      ],
+      "id": "a7250242-e83d-45d7-bcc4-90eb48c6c53f",
+      "name": "Count Interested Leads"
+    },
+    {
+      "parameters": {},
+      "id": "d3c76027-6ae5-4c26-8ea2-66f0c7530dd1",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1904,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
+        }
+      },
+      "id": "93536141-0456-4bf9-a64a-7bb8ea9370c5",
+      "name": "Schedule Trigger2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}T00:00:00",
+        "endDate": "={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}T23:59:59"
+      },
+      "id": "aec41bb9-0861-4686-9384-e12bd8e77fde",
+      "name": "Get Campaign Analytics1",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -16
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "getMany",
+        "returnAll": true,
+        "filters": {
+          "filter": "FILTER_LEAD_INTERESTED"
+        }
+      },
+      "id": "4f47cda6-c3be-4fd8-aa64-c1e25ff8b10c",
+      "name": "Get Interested Leads3",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        304
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KMBBMCR0",
+          "mode": "list",
+          "cachedResultName": "instantly-report"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "0562a632-13e6-441a-b79d-121482394185",
+      "name": "Send to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        128
+      ],
+      "webhookId": "0b4e5871-e8e1-4551-b4c5-91ec33773741",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate yesterday's date\n  const dateStr = $now.minus({days: 0}).toFormat('yyyy-MM-dd');\n\n  // Get all items from the merge node\n  const allItems = $input.all();\n\n  // Separate campaigns from interested count data\n  let campaignsArray = [];\n  let interestedLeadsData = {};\n\n  allItems.forEach(item => {\n    const data = item.json;\n    // If it has campaign_name, it's a campaign\n    if (data.campaign_name) {\n      campaignsArray.push(data);\n    }\n    // If it has interested_count, it's the count data\n    if (data.positive_reply_count !== undefined) {\n      interestedLeadsData = data;\n    }\n  });\n\n  // Get all interested leads from the data\n  const allInterestedLeads = interestedLeadsData.leads || [];\n\n  // Function to count positive replies for a specific campaign\n  function getPositiveRepliesForCampaign(campaignId) {\n    return allInterestedLeads.filter(lead => lead.campaign === campaignId).length;\n  }\n\n  let totalSent = 0, totalReplied = 0, totalBounced = 0;\n  let totalPositiveReplies = 0;\n\n  campaignsArray.forEach(c => {\n    totalSent    += c.emails_sent_count       || 0;\n    totalReplied += c.reply_count_unique      || 0;\n    totalBounced += c.bounced_count           || 0;\n  });\n\n  totalPositiveReplies = interestedLeadsData.positive_reply_count || 0;\n\n  const delivered  = totalSent - totalBounced;\n  const replyRate  = totalSent > 0 ? ((totalReplied / totalSent) * 100).toFixed(1) : '0.0';\n  const bounceRate = totalSent > 0 ? ((totalBounced / totalSent) * 100).toFixed(1) : '0.0';\n\n  const active = campaignsArray.filter(c => c.campaign_status === 1);\n  const div = '\\u2501'.repeat(38);\n\n  let msg = '';\n  msg += ':bar_chart: *Instantly Daily Analytics Report*\\n';\n  msg += '*Date:* ' + dateStr + '  |  *Campaigns:* ' + active.length + ' active / ' +\n  campaignsArray.length + ' total\\n';\n  msg += div + '\\n\\n';\n\n  msg += ' *Sent*                               ' + totalSent.toLocaleString() + '\\n';\n  msg += ' *Replied*                          ' + totalReplied.toLocaleString() + '  (' + replyRate +\n  '%)\\n';\n  msg += ' *Positive Reply Count*   ' + totalPositiveReplies.toLocaleString() + '\\n';\n  msg += ' *Bounced*                        ' + totalBounced.toLocaleString() + '  (' + bounceRate +\n  '%)\\n\\n';\n\n  msg += div + '\\n\\n';\n\n  if (active.length > 0) {\n    msg += ':mega: *Active Campaigns*\\n';\n    active.forEach(c => {\n      const campaignPositiveReplies = getPositiveRepliesForCampaign(c.campaign_id);\n      msg += '\\u2022 *' + c.campaign_name + '*\\n';\n      msg += '    Sent: ' + (c.emails_sent_count || 0) + '  |  Replied: ' + (c.reply_count_unique ||\n  0) + '  |  Positive: ' + campaignPositiveReplies + '  |  Bounced: ' + (c.bounced_count || 0) + '\\n';\n    });\n    msg += '\\n';\n  }\n\n  return { json: { text: msg } };"
+      },
+      "id": "e3bc7359-bb74-4b54-b9d6-ea2cd9d437d2",
+      "name": "Format Slack Message2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics ",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $now.minus({days:1}).toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $now.minus({days:1}).toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d0a986f-519f-465a-9663-5d2d92423f4d",
+      "name": "Get Yesterday Instantly Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        -128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "fkuixlnQu3el7GZq",
+          "name": "Abhay-RMG Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Count Interested Leads": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Get Campaign Analytics1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Interested Leads3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Analytics1": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Interested Leads3": {
+      "main": [
+        [
+          {
+            "node": "Count Interested Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message2": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
