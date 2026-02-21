@@ -1,0 +1,200 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
+        }
+      },
+      "id": "e7723606-7753-4ce8-b228-df06df5d0558",
+      "name": "Schedule Trigger2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $today.toFormat('yyyy-MM-dd') }}",
+        "endDate": "={{ $today.toFormat('yyyy-MM-dd') }}"
+      },
+      "id": "8ccffdeb-b7fc-43fa-a465-67890b8f8d1f",
+      "name": "Get Campaign Analytics1",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -16
+      ],
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KMBBMCR0",
+          "mode": "list",
+          "cachedResultName": "instantly-report"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "1111fb2f-8017-4401-a145-a2f380e16dd6",
+      "name": "Send to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        128
+      ],
+      "webhookId": "b2b4d54e-311f-466b-848f-365679c51311",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Report date in EST (workflow timezone = America/New_York)\nconst dateStr = $now.setZone('America/New_York').toFormat('yyyy-MM-dd');\n\n// Campaigns from campaign analytics node\nconst campaignItems = $('Get Campaign Analytics1').all();\n// Overview data is the input to this node (from HTTP Overview)\nconst overviewItems = $input.all();\n\nlet campaignsArray = [];\ncampaignItems.forEach(item => {\n  if (item.json.campaign_name) {\n    campaignsArray.push(item.json);\n  }\n});\n\nlet overviewData = {};\noverviewItems.forEach(item => {\n  if (item.json.total_interested !== undefined) {\n    overviewData = item.json;\n  }\n});\n\nlet totalSent = 0, totalReplied = 0, totalBounced = 0;\n\ncampaignsArray.forEach(c => {\n  totalSent    += c.emails_sent_count                                    || 0;\n  totalReplied += (c.reply_count || 0) + (c.reply_count_automatic || 0);\n  totalBounced += c.bounced_count                                        || 0;\n});\n\nconst totalInterested = overviewData.total_interested || 0;\n\nconst replyRate      = totalSent > 0 ? ((totalReplied    / totalSent) * 100).toFixed(1) : '0.0';\nconst interestedRate = totalSent > 0 ? ((totalInterested / totalSent) * 100).toFixed(1) : '0.0';\nconst bounceRate     = totalSent > 0 ? ((totalBounced    / totalSent) * 100).toFixed(1) : '0.0';\n\nconst active = campaignsArray.filter(c => c.campaign_status === 1);\nconst div = '\\u2501'.repeat(38);\n\nlet msg = '';\nmsg += ':bar_chart: *Instantly Daily Analytics Report*\\n';\nmsg += '*Date:* ' + dateStr + '  |  *Campaigns:* ' + active.length + ' active / ' + campaignsArray.length + ' total\\n';\nmsg += div + '\\n\\n';\n\nmsg += ' *Sent*                               ' + totalSent.toLocaleString()      + '\\n';\nmsg += ' *Replied*                          ' + totalReplied.toLocaleString()      + '  (' + replyRate + '%)\\n';\nmsg += ' *Interested*                     ' + totalInterested.toLocaleString()     + '  (' + interestedRate + '%)\\n';\nmsg += ' *Bounced*                        ' + totalBounced.toLocaleString()         + '  (' + bounceRate + '%)\\n\\n';\n\nmsg += div + '\\n\\n';\n\nif (active.length > 0) {\n  msg += ':mega: *Active Campaigns*\\n';\n  active.forEach(c => {\n    const replied = (c.reply_count || 0) + (c.reply_count_automatic || 0);\n    msg += '\\u2022 *' + c.campaign_name + '*\\n';\n    msg += '    Sent: '     + (c.emails_sent_count || 0) +\n           '  |  Replied: ' + replied +\n           '  |  Bounced: ' + (c.bounced_count || 0) + '\\n';\n  });\n  msg += '\\n';\n}\n\nreturn { json: { text: msg } };"
+      },
+      "id": "d5dea400-2d7d-489c-9740-51283f0c698b",
+      "name": "Format Slack Message2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics/overview",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $today.toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $today.plus({days: 1}).toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://app.instantly.ai/"
+            },
+            {
+              "name": "Origin",
+              "value": "https://app.instantly.ai"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "db2e05db-bd69-4c4c-ba0c-ab26147573f4",
+      "name": "Get Yesterday Instantly Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        -128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "fkuixlnQu3el7GZq",
+          "name": "Abhay-RMG Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Get Campaign Analytics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Analytics1": {
+      "main": [
+        [
+          {
+            "node": "Get Yesterday Instantly Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Yesterday Instantly Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message2": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
