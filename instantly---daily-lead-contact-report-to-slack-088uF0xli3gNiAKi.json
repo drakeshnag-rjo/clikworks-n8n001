@@ -1662,6 +1662,31 @@
         -1200
       ],
       "webhookId": "8ec307a3-cef0-449c-ab74-b30cb1e22236"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "sendTo": "padavalaabhayanjaneyulu@gmail.com",
+        "subject": "Hello World!",
+        "emailType": "text",
+        "message": "Hiee this is Abhay, testing.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        192
+      ],
+      "id": "87b0e3ec-5634-4172-8bac-1f87a3ddfbd6",
+      "name": "Send a message",
+      "webhookId": "2e26e9e2-309f-47db-a59c-e8f56e64cc7e",
+      "credentials": {
+        "googleApi": {
+          "id": "oN3ERcTqOokqLlqY",
+          "name": "Abhay- Notifications Service Gmail account"
+        }
+      }
     }
   ],
   "connections": {
