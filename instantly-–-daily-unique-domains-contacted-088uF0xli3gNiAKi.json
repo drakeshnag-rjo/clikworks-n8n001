@@ -1,0 +1,4417 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "aa2e80d1-107f-4e7d-bdc4-7dcf0fd2bd6e",
+      "name": "On Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "text": ":warning: *Outbound Report FAILED*\n\nPlease check the n8n execution log.",
+        "otherOptions": {}
+      },
+      "id": "47914b82-d021-4a3a-9ac3-23dd0a41f41e",
+      "name": "Send Error to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        -208
+      ],
+      "webhookId": "dc7e873d-3a98-46e4-840b-d9232f77c7cc"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "5c223f55-8619-46bf-99e2-afc0147c973f",
+      "name": "Daily 9AM ET1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\nconst allTimeStart = '2024-01-01';\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr,\n    allTimeStart: allTimeStart\n  }\n}];"
+      },
+      "id": "c286b99c-238e-4fea-b054-aacffd010ff7",
+      "name": "Set Date Variables1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0ef4729-2ac3-4c45-bca9-8386d4e5360d",
+      "name": "Fetch All Campaigns1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -528
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ id: campaign.id, name: name });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ id: campaign.id, name: name });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "56600455-f810-4837-82cf-873769c753e5",
+      "name": "Categorize Campaigns1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns1'].json;\nconst dateVars = $node['Set Date Variables1'].json;\nconst dailyAnalyticsItems = $input.all();\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\nconst yesterday = dateVars.yesterday;\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\nfunction wasContactedOnDate(lead) {\n  const ts = lead.timestamp_last_step_executed || lead.last_step_timestamp_executed;\n  if (!ts) return false;\n  const d = new Date(ts);\n  return d >= yesterdayStart && d <= yesterdayEnd;\n}\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContactedYesterday = companyLeads.filter(wasContactedOnDate);\nconst peopleContactedYesterday = peopleLeads.filter(wasContactedOnDate);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContactedYesterday) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContactedYesterday) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\n// Process analytics data from native Instantly node\nlet dailyReplies = 0;\nlet dailySent = 0;\n\n// Get all campaign analytics items\nconst allCampaignIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst campaignIdSet = new Set(allCampaignIds);\n\n// Sum up metrics from matching campaigns\nfor (const item of dailyAnalyticsItems) {\n  const campaign = item.json;\n  if (campaign && campaign.campaign_id && campaignIdSet.has(campaign.campaign_id)) {\n    // Use reply_count from the native node response\n    dailyReplies += (campaign.reply_count || campaign.reply_count_unique || 0);\n    // Use emails_sent_count or new_leads_contacted_count\n    dailySent += (campaign.emails_sent_count || campaign.new_leads_contacted_count || 0);\n  }\n}\n\nconst allContactedYesterday = [...companyContactedYesterday, ...peopleContactedYesterday];\nconst dailyPositiveReplies = allContactedYesterday.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    daily: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: dailyReplies,\n      positiveReplies: dailyPositiveReplies,\n      sent: dailySent,\n      date: yesterday\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContactedYesterday: companyContactedYesterday.length,\n      peopleContactedYesterday: peopleContactedYesterday.length\n    }\n  }\n}];\n"
+      },
+      "id": "447eef5d-da79-4260-8b11-b950ec805c74",
+      "name": "Daily Leads Fetch & Dedup1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns1'].json;\nconst allTimeAnalyticsItems = $input.all();\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nfunction wasContacted(lead) {\n  return !!(lead.timestamp_last_step_executed || lead.last_step_timestamp_executed);\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContacted = companyLeads.filter(wasContacted);\nconst peopleContacted = peopleLeads.filter(wasContacted);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContacted) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContacted) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\n// Process analytics data from native Instantly node\nlet allTimeReplies = 0;\nlet allTimeSent = 0;\n\n// Get all campaign analytics items\nconst allCampaignIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst campaignIdSet = new Set(allCampaignIds);\n\n// Sum up metrics from matching campaigns\nfor (const item of allTimeAnalyticsItems) {\n  const campaign = item.json;\n  if (campaign && campaign.campaign_id && campaignIdSet.has(campaign.campaign_id)) {\n    // Use reply_count from the native node response\n    allTimeReplies += (campaign.reply_count || campaign.reply_count_unique || 0);\n    // Use emails_sent_count or new_leads_contacted_count\n    allTimeSent += (campaign.emails_sent_count || campaign.new_leads_contacted_count || 0);\n  }\n}\n\nconst allContacted = [...companyContacted, ...peopleContacted];\nconst allTimePositiveReplies = allContacted.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    allTime: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: allTimeReplies,\n      positiveReplies: allTimePositiveReplies,\n      sent: allTimeSent\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContacted: companyContacted.length,\n      peopleContacted: peopleContacted.length\n    }\n  }\n}];\n"
+      },
+      "id": "d61ffea1-2e91-48db-b4c7-f4f1cb74a4d3",
+      "name": "All-Time Leads Fetch & Dedup1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -432
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3e84361c-8581-4bc7-9246-d2d8be23f0d4",
+      "name": "Merge Results1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input1 = $input.all()[0]?.json || {};\nconst input2 = $input.all()[1]?.json || {};\n\nconst daily = input1.daily || input2.daily || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0, date: 'N/A'\n};\nconst allTime = input1.allTime || input2.allTime || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0\n};\n\nconst dailyPositiveRate = daily.replies > 0\n  ? ((daily.positiveReplies / daily.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst allTimePositiveRate = allTime.replies > 0\n  ? ((allTime.positiveReplies / allTime.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*Outbound Report - ${daily.date}*`,\n  '',\n  '*:calendar: Yesterday*',\n  `> *Unique Companies:* ${fmt(daily.uniqueCompanies)}    |    *Unique People:* ${fmt(daily.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(daily.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(daily.sent)}`,\n  `> *Replies:* ${fmt(daily.replies)}    |    *Positive Replies:* ${fmt(daily.positiveReplies)} (${dailyPositiveRate}%)`,\n  '',\n  '*:chart_with_upwards_trend: All-Time*',\n  `> *Unique Companies:* ${fmt(allTime.uniqueCompanies)}    |    *Unique People:* ${fmt(allTime.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(allTime.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(allTime.sent)}`,\n  `> *Replies:* ${fmt(allTime.replies)}    |    *Positive Replies:* ${fmt(allTime.positiveReplies)} (${allTimePositiveRate}%)`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText } }];"
+      },
+      "id": "08e6eb5e-bda1-400d-8d70-7eac15e538e6",
+      "name": "Format Slack Message1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "611350e0-2867-44b4-bde6-6435ad58031b",
+      "name": "Send to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1088,
+        -528
+      ],
+      "webhookId": "1fa3d01c-5a1f-4225-9009-1c387ddecf42",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $node['Set Date Variables1'].json.allTimeStart }}",
+        "endDate": "={{ $node['Set Date Variables1'].json.today }}"
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -432
+      ],
+      "id": "3bf32e3d-5437-4960-b46b-fdb094cc1d72",
+      "name": "Fetch All-Time Analytics1",
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "analytics",
+        "returnAll": true,
+        "startDate": "={{ $node['Set Date Variables1'].json.yesterday }}",
+        "endDate": "={{ $node['Set Date Variables1'].json.yesterday }}"
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -640
+      ],
+      "id": "bd0b8475-b764-489a-b8d7-124553da2982",
+      "name": "Fetch Daily Analytics2",
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "0b74f98b-33e5-4414-916f-d4b11ad3144e",
+      "name": "Daily 9AM ET",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\nconst allTimeStart = '2024-01-01';\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr,\n    allTimeStart: allTimeStart\n  }\n}];"
+      },
+      "id": "e012577c-e5e3-4237-b4de-6221b4a2b2e2",
+      "name": "Set Date Variables",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ca0ef730-f2ed-426a-ace1-03e59b16a019",
+      "name": "Fetch All Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -32,
+        80
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ id: campaign.id, name: name });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ id: campaign.id, name: name });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "c00f77c6-c1bc-4443-8258-89054e097869",
+      "name": "Categorize Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns'].json;\nconst dateVars = $node['Set Date Variables'].json;\nconst allLeads = $input.all(); // All leads from \"Fetch leads\" node\n\nconst companyCampaignIds = new Set(campaignData.companyCampaignIds || []);\nconst peopleCampaignIds = new Set(campaignData.peopleCampaignIds || []);\nconst companyCampaigns = campaignData.companyCampaigns || [];\nconst peopleCampaigns = campaignData.peopleCampaigns || [];\nconst yesterday = dateVars.yesterday;\n\n// Date ranges\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\n// Helper functions\nfunction wasContactedOnDate(lead, date) {\n  const ts = lead.timestamp_last_contact;\n  if (!ts) return false;\n  const d = new Date(ts);\n  const dateStart = new Date(date + 'T00:00:00Z');\n  const dateEnd = new Date(date + 'T23:59:59.999Z');\n  return d >= dateStart && d <= dateEnd;\n}\n\nfunction getEmail(lead) {\n  return (lead.email || '').toLowerCase().trim();\n}\n\nfunction getCampaignStartDate(campaigns) {\n  let earliestDate = null;\n  for (const campaign of campaigns) {\n    const created = campaign.created_at;\n    if (created) {\n      const dateStr = new Date(created).toISOString().split('T')[0];\n      if (!earliestDate || dateStr < earliestDate) {\n        earliestDate = dateStr;\n      }\n    }\n  }\n  return earliestDate || 'N/A';\n}\n\n// Separate leads by campaign type\nconst companyLeads = [];\nconst peopleLeads = [];\n\nfor (const item of allLeads) {\n  const lead = item.json;\n  const campaignId = lead.campaign; // This is the correct field name\n  \n  if (!campaignId) {\n    continue; // Skip if no campaign ID found\n  }\n  \n  if (companyCampaignIds.has(campaignId)) {\n    companyLeads.push(lead);\n  } else if (peopleCampaignIds.has(campaignId)) {\n    peopleLeads.push(lead);\n  }\n}\n\n// Count unique emails contacted yesterday - Company\nconst companyEmailsYesterday = new Set();\nfor (const lead of companyLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) companyEmailsYesterday.add(email);\n  }\n}\n\n// Count unique emails contacted all-time - Company\nconst companyEmailsAllTime = new Set();\nfor (const lead of companyLeads) {\n  const email = getEmail(lead);\n  if (email) companyEmailsAllTime.add(email);\n}\n\n// Count unique emails contacted yesterday - People\nconst peopleEmailsYesterday = new Set();\nfor (const lead of peopleLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) peopleEmailsYesterday.add(email);\n  }\n}\n\n// Count unique emails contacted all-time - People\nconst peopleEmailsAllTime = new Set();\nfor (const lead of peopleLeads) {\n  const email = getEmail(lead);\n  if (email) peopleEmailsAllTime.add(email);\n}\n\n// Get campaign start dates\nconst companyStartDate = getCampaignStartDate(companyCampaigns);\nconst peopleStartDate = getCampaignStartDate(peopleCampaigns);\n\nreturn [{\n  json: {\n    daily: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsYesterday.size,\n        date: yesterday\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsYesterday.size,\n        date: yesterday\n      },\n      total: companyEmailsYesterday.size + peopleEmailsYesterday.size\n    },\n    allTime: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsAllTime.size,\n        startDate: companyStartDate\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsAllTime.size,\n        startDate: peopleStartDate\n      },\n      total: companyEmailsAllTime.size + peopleEmailsAllTime.size\n    },\n    _meta: {\n      companyCampaignsCount: companyCampaigns.length,\n      peopleCampaignsCount: peopleCampaigns.length,\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      totalLeadsProcessed: allLeads.length\n    }\n  }\n}];"
+      },
+      "id": "79ab583f-23d8-4daa-b769-da67d5398992",
+      "name": "Daily Leads Fetch & Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input1 = $input.all()[0]?.json || {};\nconst input2 = $input.all()[1]?.json || {};\n\nconst daily = input1.daily || input2.daily || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0, date: 'N/A'\n};\nconst allTime = input1.allTime || input2.allTime || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0\n};\n\nconst dailyPositiveRate = daily.replies > 0\n  ? ((daily.positiveReplies / daily.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst allTimePositiveRate = allTime.replies > 0\n  ? ((allTime.positiveReplies / allTime.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*Outbound Report - ${daily.date}*`,\n  '',\n  '*:calendar: Yesterday*',\n  `> *Unique Companies:* ${fmt(daily.uniqueCompanies)}    |    *Unique People:* ${fmt(daily.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(daily.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(daily.sent)}`,\n  `> *Replies:* ${fmt(daily.replies)}    |    *Positive Replies:* ${fmt(daily.positiveReplies)} (${dailyPositiveRate}%)`,\n  '',\n  '*:chart_with_upwards_trend: All-Time*',\n  `> *Unique Companies:* ${fmt(allTime.uniqueCompanies)}    |    *Unique People:* ${fmt(allTime.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(allTime.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(allTime.sent)}`,\n  `> *Replies:* ${fmt(allTime.replies)}    |    *Positive Replies:* ${fmt(allTime.positiveReplies)} (${allTimePositiveRate}%)`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText } }];"
+      },
+      "id": "66b7dce5-b84c-4085-b281-d4fda7afd020",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KMBBMCR0",
+          "mode": "list",
+          "cachedResultName": "instantly-report"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "3cd5751d-ba47-4f41-aff7-312605941428",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        80
+      ],
+      "webhookId": "1fa3d01c-5a1f-4225-9009-1c387ddecf42",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": ":warning: *Outbound Report FAILED*\n\nPlease check the n8n execution log.",
+        "otherOptions": {}
+      },
+      "id": "33d4d792-2dd8-4cd2-9904-c6f3b41156bd",
+      "name": "Send Error to Slack1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        912
+      ],
+      "webhookId": "dc7e873d-3a98-46e4-840b-d9232f77c7cc"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "3d1779d6-2618-4142-b096-683f4d815293",
+      "name": "Send to Slack2",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        720
+      ],
+      "webhookId": "cc48bc79-9238-4d74-9095-f14e2cc20a2f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input1 = $input.all()[0]?.json || {};\nconst input2 = $input.all()[1]?.json || {};\n\nconst daily = input1.daily || input2.daily || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0, date: 'N/A'\n};\nconst allTime = input1.allTime || input2.allTime || {\n  uniqueCompanies: 0, uniquePeople: 0, totalUniqueContacts: 0,\n  replies: 0, positiveReplies: 0, sent: 0\n};\n\nconst dailyPositiveRate = daily.replies > 0\n  ? ((daily.positiveReplies / daily.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst allTimePositiveRate = allTime.replies > 0\n  ? ((allTime.positiveReplies / allTime.replies) * 100).toFixed(1)\n  : '0.0';\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*Outbound Report - ${daily.date}*`,\n  '',\n  '*:calendar: Yesterday*',\n  `> *Unique Companies:* ${fmt(daily.uniqueCompanies)}    |    *Unique People:* ${fmt(daily.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(daily.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(daily.sent)}`,\n  `> *Replies:* ${fmt(daily.replies)}    |    *Positive Replies:* ${fmt(daily.positiveReplies)} (${dailyPositiveRate}%)`,\n  '',\n  '*:chart_with_upwards_trend: All-Time*',\n  `> *Unique Companies:* ${fmt(allTime.uniqueCompanies)}    |    *Unique People:* ${fmt(allTime.uniquePeople)}`,\n  `> *Total Contacts:* ${fmt(allTime.totalUniqueContacts)}    |    *Emails Sent:* ${fmt(allTime.sent)}`,\n  `> *Replies:* ${fmt(allTime.replies)}    |    *Positive Replies:* ${fmt(allTime.positiveReplies)} (${allTimePositiveRate}%)`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText } }];"
+      },
+      "id": "b36dd8f8-bc65-4dfe-ad67-b7e9d2eb23c1",
+      "name": "Format Slack Message2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      },
+      "id": "12638953-7899-4bac-8ab4-3d4341eb10c4",
+      "name": "Merge Results2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        752,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns2'].json;\nconst dateVars = $node['Set Date Variables2'].json;\nconst allTimeAnalyticsRaw = $node['Fetch All-Time Analytics2'].json;\nconst API_KEY = $env.INSTANTLY_API_KEY;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nfunction wasContacted(lead) {\n  return !!(lead.timestamp_last_step_executed || lead.last_step_timestamp_executed);\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContacted = companyLeads.filter(wasContacted);\nconst peopleContacted = peopleLeads.filter(wasContacted);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContacted) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContacted) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\nlet allTimeReplies = 0;\nlet allTimeSent = 0;\nconst analyticsData = allTimeAnalyticsRaw.data || allTimeAnalyticsRaw.items || allTimeAnalyticsRaw || [];\nconst analyticsArray = Array.isArray(analyticsData) ? analyticsData : [analyticsData];\nfor (const entry of analyticsArray) {\n  if (!entry || typeof entry !== 'object') continue;\n  allTimeReplies += (entry.unique_replies || entry.replies || 0);\n  allTimeSent += (entry.sent || entry.new_leads_contacted || 0);\n}\n\nconst allContacted = [...companyContacted, ...peopleContacted];\nconst allTimePositiveReplies = allContacted.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    allTime: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: allTimeReplies,\n      positiveReplies: allTimePositiveReplies,\n      sent: allTimeSent\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContacted: companyContacted.length,\n      peopleContacted: peopleContacted.length\n    }\n  }\n}];"
+      },
+      "id": "88ad2833-fe01-49ad-8f58-8d6f0c25c80d",
+      "name": "All-Time Leads Fetch & Dedup2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        816
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns2'].json;\nconst dateVars = $node['Set Date Variables2'].json;\nconst dailyAnalyticsRaw = $node['Fetch Daily Analytics1'].json;\nconst API_KEY = $env.INSTANTLY_API_KEY;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\nconst yesterday = dateVars.yesterday;\n\nconst FREE_DOMAINS = new Set([\n  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',\n  'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',\n  'zoho.com', 'yandex.com', 'gmx.com', 'live.com',\n  'msn.com', 'me.com', 'comcast.net', 'att.net',\n  'verizon.net', 'cox.net', 'sbcglobal.net'\n]);\n\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\nfunction wasContactedOnDate(lead) {\n  const ts = lead.timestamp_last_step_executed || lead.last_step_timestamp_executed;\n  if (!ts) return false;\n  const d = new Date(ts);\n  return d >= yesterdayStart && d <= yesterdayEnd;\n}\n\nfunction getDomain(lead) {\n  let domain = (lead.company_domain || '').toLowerCase().trim();\n  if (!domain || FREE_DOMAINS.has(domain)) {\n    const email = (lead.email || '').toLowerCase();\n    const parts = email.split('@');\n    if (parts.length === 2) domain = parts[1];\n  }\n  if (FREE_DOMAINS.has(domain)) return null;\n  return domain || null;\n}\n\nfunction getName(lead) {\n  const first = (lead.first_name || '').trim().toLowerCase();\n  const last = (lead.last_name || '').trim().toLowerCase();\n  const name = `${first} ${last}`.trim();\n  return name && name.length > 1 ? name : null;\n}\n\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { campaign_id: campaignId, limit: 100 };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\nconst companyLeads = [];\nfor (const cid of companyCampaignIds) {\n  companyLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst peopleLeads = [];\nfor (const cid of peopleCampaignIds) {\n  peopleLeads.push(...(await fetchLeadsForCampaign(cid)));\n}\n\nconst companyContactedYesterday = companyLeads.filter(wasContactedOnDate);\nconst peopleContactedYesterday = peopleLeads.filter(wasContactedOnDate);\n\nconst uniqueDomains = new Set();\nfor (const lead of companyContactedYesterday) {\n  const domain = getDomain(lead);\n  if (domain) uniqueDomains.add(domain);\n}\n\nconst uniqueNames = new Set();\nfor (const lead of peopleContactedYesterday) {\n  const name = getName(lead);\n  if (name) uniqueNames.add(name);\n}\n\nlet dailyReplies = 0;\nlet dailySent = 0;\nconst analyticsData = dailyAnalyticsRaw.data || dailyAnalyticsRaw.items || dailyAnalyticsRaw || [];\nconst analyticsArray = Array.isArray(analyticsData) ? analyticsData : [analyticsData];\nfor (const entry of analyticsArray) {\n  if (!entry || typeof entry !== 'object') continue;\n  dailyReplies += (entry.unique_replies || entry.replies || 0);\n  dailySent += (entry.sent || entry.new_leads_contacted || 0);\n}\n\nconst allContactedYesterday = [...companyContactedYesterday, ...peopleContactedYesterday];\nconst dailyPositiveReplies = allContactedYesterday.filter(l =>\n  (l.interest_status === 1 || l.lt_interest_status === 1) &&\n  (l.email_reply_count > 0 || l.reply_count > 0)\n).length;\n\nreturn [{\n  json: {\n    daily: {\n      uniqueCompanies: uniqueDomains.size,\n      uniquePeople: uniqueNames.size,\n      totalUniqueContacts: uniqueDomains.size + uniqueNames.size,\n      replies: dailyReplies,\n      positiveReplies: dailyPositiveReplies,\n      sent: dailySent,\n      date: yesterday\n    },\n    _meta: {\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      companyContactedYesterday: companyContactedYesterday.length,\n      peopleContactedYesterday: peopleContactedYesterday.length\n    }\n  }\n}];"
+      },
+      "id": "5b1f7a73-a5cf-4dc6-8399-4d348c12e4cc",
+      "name": "Daily Leads Fetch & Dedup2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        608
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/analytics/campaign/daily",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $node['Set Date Variables2'].json.allTimeStart }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $node['Set Date Variables2'].json.today }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a80230ef-3f52-4b05-818c-e55aa8f3b33d",
+      "name": "Fetch All-Time Analytics2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        816
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/analytics/daily",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $node['Set Date Variables2'].json.yesterday }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $node['Set Date Variables2'].json.yesterday }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "271c6a12-bbc8-4cf8-a875-7a75009108ac",
+      "name": "Fetch Daily Analytics1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        608
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lCSHomJ5HhPvwzD0",
+          "name": "Abhay-Header Auth Instantly(RMG)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ id: campaign.id, name: name });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ id: campaign.id, name: name });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "e6fd3ee2-8e18-44cc-83c3-e24cc6b3a96e",
+      "name": "Categorize Campaigns2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "99bb831d-aa0c-4d43-b1b6-29cb4cac8468",
+      "name": "Fetch All Campaigns2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -128,
+        720
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\nconst allTimeStart = '2024-01-01';\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr,\n    allTimeStart: allTimeStart\n  }\n}];"
+      },
+      "id": "eb002baf-2d2a-45c5-9466-93cc1c23339d",
+      "name": "Set Date Variables2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutesInterval"
+            }
+          ]
+        }
+      },
+      "id": "ca263d60-1c73-42a3-b83a-b9d5ebe97e01",
+      "name": "Daily 9AM ET2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -576,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "unibox",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        400,
+        80
+      ],
+      "id": "b10a56a3-6400-426c-8051-4572e02b999b",
+      "name": "Fetch leads",
+      "alwaysOutputData": false,
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns3'].json;\nconst dateVars = $node['Set Date Variables3'].json;\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaigns = campaignData.companyCampaigns || [];\nconst peopleCampaigns = campaignData.peopleCampaigns || [];\nconst yesterday = dateVars.yesterday;\n\n// Date ranges\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\n// Helper functions\nfunction wasContactedOnDate(lead, date) {\n  const ts = lead.timestamp_last_contact;\n  if (!ts) return false;\n  const d = new Date(ts);\n  const dateStart = new Date(date + 'T00:00:00Z');\n  const dateEnd = new Date(date + 'T23:59:59.999Z');\n  return d >= dateStart && d <= dateEnd;\n}\n\nfunction getEmail(lead) {\n  return (lead.email || '').toLowerCase().trim();\n}\n\nfunction getCampaignStartDate(campaign) {\n  if (!campaign.created_at) return null;\n  const date = new Date(campaign.created_at);\n  return date.toISOString().split('T')[0];\n}\n\n// Fetch leads for a specific campaign\nasync function fetchLeadsForCampaign(campaignId) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { \n      campaign_id: campaignId, \n      limit: 100,\n      filter: \"FILTER_VAL_CONTACTED\"\n    };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n\n      const data = await response.json();\n      const leads = data.items || [];\n      if (Array.isArray(leads)) allLeads.push(...leads);\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n    } catch (error) {\n      console.log(`Error fetching campaign ${campaignId}: ${error.message}`);\n      hasMore = false;\n    }\n  }\n  return allLeads;\n}\n\n// Process Company Campaigns\nconst companyLeads = [];\nlet companyStartDate = null;\n\nfor (const campaign of companyCampaigns) {\n  const leads = await fetchLeadsForCampaign(campaign.id);\n  companyLeads.push(...leads);\n  \n  const campaignStart = getCampaignStartDate(campaign);\n  if (campaignStart && (!companyStartDate || campaignStart < companyStartDate)) {\n    companyStartDate = campaignStart;\n  }\n}\n\n// Process People Campaigns\nconst peopleLeads = [];\nlet peopleStartDate = null;\n\nfor (const campaign of peopleCampaigns) {\n  const leads = await fetchLeadsForCampaign(campaign.id);\n  peopleLeads.push(...leads);\n  \n  const campaignStart = getCampaignStartDate(campaign);\n  if (campaignStart && (!peopleStartDate || campaignStart < peopleStartDate)) {\n    peopleStartDate = campaignStart;\n  }\n}\n\n// Count unique emails contacted yesterday - Company\nconst companyEmailsYesterday = new Set();\nfor (const lead of companyLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) companyEmailsYesterday.add(email);\n  }\n}\n\n// Count unique emails contacted all-time - Company\nconst companyEmailsAllTime = new Set();\nfor (const lead of companyLeads) {\n  const email = getEmail(lead);\n  if (email) companyEmailsAllTime.add(email);\n}\n\n// Count unique emails contacted yesterday - People\nconst peopleEmailsYesterday = new Set();\nfor (const lead of peopleLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) peopleEmailsYesterday.add(email);\n  }\n}\n\n// Count unique emails contacted all-time - People\nconst peopleEmailsAllTime = new Set();\nfor (const lead of peopleLeads) {\n  const email = getEmail(lead);\n  if (email) peopleEmailsAllTime.add(email);\n}\n\nreturn [{\n  json: {\n    daily: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsYesterday.size,\n        date: yesterday\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsYesterday.size,\n        date: yesterday\n      },\n      total: companyEmailsYesterday.size + peopleEmailsYesterday.size\n    },\n    allTime: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsAllTime.size,\n        startDate: companyStartDate || 'N/A'\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsAllTime.size,\n        startDate: peopleStartDate || 'N/A'\n      },\n      total: companyEmailsAllTime.size + peopleEmailsAllTime.size\n    },\n    _meta: {\n      companyCampaignsCount: companyCampaigns.length,\n      peopleCampaignsCount: peopleCampaigns.length,\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length\n    }\n  }\n}];"
+      },
+      "id": "f6d16c23-35a0-40d2-ba67-15c4fabc706f",
+      "name": "Fetch & Count Unique Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "9de31918-9e21-4f59-b8dc-f2dda0c1da98",
+      "name": "Daily 9AM ET3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -336,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr\n  }\n}];"
+      },
+      "id": "ee3bee15-1c19-44b2-a8f2-1b276b149d29",
+      "name": "Set Date Variables3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4988de6f-7e53-4b63-add2-cbbc8609691e",
+      "name": "Fetch All Campaigns3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        1280
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "2fb3dbd8-acca-4425-aaab-dd183bf0fe39",
+      "name": "Categorize Campaigns3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*📊 Outbound Report - ${data.daily.companyCampaigns.date}*`,\n  '',\n  '*📅 Yesterday*',\n  `> *Company Campaigns:* ${fmt(data.daily.companyCampaigns.uniqueLeadsContacted)} unique leads contacted`,\n  `> *People Campaigns:* ${fmt(data.daily.peopleCampaigns.uniqueLeadsContacted)} unique leads contacted`,\n  `> *Total:* ${fmt(data.daily.total)} unique leads contacted`,\n  '',\n  '*📈 All-Time*',\n  `> *Company Campaigns:* ${fmt(data.allTime.companyCampaigns.uniqueLeadsContacted)} unique leads (since ${data.allTime.companyCampaigns.startDate})`,\n  `> *People Campaigns:* ${fmt(data.allTime.peopleCampaigns.uniqueLeadsContacted)} unique leads (since ${data.allTime.peopleCampaigns.startDate})`,\n  `> *Total:* ${fmt(data.allTime.total)} unique leads contacted`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText, rawData: data } }];"
+      },
+      "id": "280c2197-5db8-4e69-9549-46d4928fd87e",
+      "name": "Format Slack Message3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "76b65c66-cb1f-45a4-8acc-6b1ac91316c7",
+      "name": "Send to Slack3",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        1280
+      ],
+      "webhookId": "1fa3d01c-5a1f-4225-9009-1c387ddecf42",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns'].json;\nconst API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\nconst allCampaignIds = [...companyCampaignIds, ...peopleCampaignIds];\n\nconsole.log(`Starting to fetch contacted leads from ${allCampaignIds.length} campaigns...`);\nconsole.log('Company campaigns:', companyCampaignIds);\nconsole.log('People campaigns:', peopleCampaignIds);\n\n// Function to fetch all leads for a specific campaign\nasync function fetchLeadsForCampaign(campaignId, campaignType) {\n  const allLeads = [];\n  let cursor = null;\n  let hasMore = true;\n  let page = 0;\n\n  while (hasMore && page < 100) {\n    const body = { \n      campaign_id: campaignId, \n      limit: 100,\n      filter: \"FILTER_VAL_CONTACTED\" // Only contacted leads\n    };\n    if (cursor) body.starting_after = cursor;\n\n    try {\n      console.log(`Fetching page ${page + 1} for campaign ${campaignId}...`);\n      \n      const response = await fetch('https://api.instantly.ai/api/v2/leads/list', {\n        method: 'POST',\n        headers: {\n          'Authorization': `Bearer ${API_KEY}`,\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify(body)\n      });\n\n      if (!response.ok) {\n        const errorText = await response.text();\n        console.log(`HTTP ${response.status} for campaign ${campaignId}: ${errorText}`);\n        break;\n      }\n\n      const data = await response.json();\n      const leads = data.items || [];\n      \n      console.log(`Got ${leads.length} leads from page ${page + 1}`);\n      \n      // Add campaign type to each lead\n      for (const lead of leads) {\n        allLeads.push({\n          ...lead,\n          campaignType: campaignType\n        });\n      }\n\n      cursor = data.next_starting_after;\n      hasMore = !!cursor;\n      page++;\n\n      if (hasMore) await new Promise(r => setTimeout(r, 250));\n      \n    } catch (error) {\n      console.error(`Error fetching campaign ${campaignId}:`, error);\n      hasMore = false;\n    }\n  }\n  \n  console.log(`Total leads fetched for campaign ${campaignId}: ${allLeads.length}`);\n  return allLeads;\n}\n\n// Main execution\ntry {\n  // Fetch leads from all company campaigns\n  const companyLeads = [];\n  for (const campaignId of companyCampaignIds) {\n    const leads = await fetchLeadsForCampaign(campaignId, 'Company');\n    companyLeads.push(...leads);\n  }\n\n  // Fetch leads from all people campaigns\n  const peopleLeads = [];\n  for (const campaignId of peopleCampaignIds) {\n    const leads = await fetchLeadsForCampaign(campaignId, 'People');\n    peopleLeads.push(...leads);\n  }\n\n  // Combine all leads\n  const allLeads = [...companyLeads, ...peopleLeads];\n\n  console.log(`=== SUMMARY ===`);\n  console.log(`Total contacted leads fetched: ${allLeads.length}`);\n  console.log(`Company leads: ${companyLeads.length}, People leads: ${peopleLeads.length}`);\n\n  // If no leads, return empty array to prevent workflow stop\n  if (allLeads.length === 0) {\n    console.log('No leads found - returning empty result');\n    return [{ json: { message: 'No contacted leads found', totalLeads: 0 } }];\n  }\n\n  // Return all leads as separate items\n  return allLeads.map(lead => ({ json: lead }));\n  \n} catch (error) {\n  console.error('Fatal error:', error);\n  // Return error info instead of failing\n  return [{ \n    json: { \n      error: error.message,\n      stack: error.stack,\n      message: 'Error fetching leads'\n    } \n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        368
+      ],
+      "id": "86abde91-582d-419f-a5e4-4d6b575afa0d",
+      "name": "Code in JavaScript",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $input.first().json;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst items = [];\n\nfor (const campaignId of companyCampaignIds) {\n  items.push({\n    json: {\n      campaign_id: campaignId,\n      campaignType: 'Company',\n      limit: 1000,\n      filter: \"FILTER_VAL_CONTACTED\"\n    }\n  });\n}\n\nfor (const campaignId of peopleCampaignIds) {\n  items.push({\n    json: {\n      campaign_id: campaignId,\n      campaignType: 'People',\n      limit: 1000,\n      filter: \"FILTER_VAL_CONTACTED\"\n    }\n  });\n}\n\nconsole.log(`Created ${items.length} items for HTTP requests`);\n\nreturn items;"
+      },
+      "id": "9c6c8499-253d-4744-9682-468a30de8680",
+      "name": "Split Campaigns for HTTP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"campaign_id\": \"={{ $json.campaign_id }}\",\n  \"limit\": 100,\n  \"filter\": \"FILTER_VAL_CONTACTED\"\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 250
+            }
+          }
+        }
+      },
+      "id": "b3c19b48-ff76-44d5-8e00-78c40bd4143f",
+      "name": "Fetch Leads from Instantly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        608,
+        1984
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// This node flattens all the API responses into individual lead items\nconst allItems = $input.all();\nconst splitItems = $node['Split Campaigns for HTTP'].json;\n\n// Create a map of campaign_id to campaignType from the split node\nconst campaignTypeMap = {};\nfor (const item of splitItems) {\n  if (Array.isArray(item)) {\n    for (const subItem of item) {\n      campaignTypeMap[subItem.campaign_id] = subItem.campaignType;\n    }\n  } else {\n    campaignTypeMap[item.campaign_id] = item.campaignType;\n  }\n}\n\nconst allLeads = [];\n\nfor (const item of allItems) {\n  const response = item.json;\n  \n  // The API returns items array with the leads\n  const leads = response.items || [];\n  \n  console.log(`Processing ${leads.length} leads from response`);\n  \n  for (const lead of leads) {\n    // Get campaign type from the map using the lead's campaign ID\n    const campaignType = campaignTypeMap[lead.campaign] || 'Unknown';\n    \n    allLeads.push({\n      json: {\n        ...lead,\n        campaignType: campaignType\n      }\n    });\n  }\n}\n\nconsole.log(`Total leads: ${allLeads.length}`);\n\nif (allLeads.length === 0) {\n  return [{ json: { message: 'No contacted leads found', totalLeads: 0 } }];\n}\n\nreturn allLeads;"
+      },
+      "id": "6eff7334-ed4b-43ee-9e92-1c57bbdaf566",
+      "name": "Flatten HTTP Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $node['Categorize Campaigns4'].json;\nconst dateVars = $node['Set Date Variables4'].json;\nconst allLeads = $input.all();\n\nconst companyCampaignIds = new Set(campaignData.companyCampaignIds || []);\nconst peopleCampaignIds = new Set(campaignData.peopleCampaignIds || []);\nconst companyCampaigns = campaignData.companyCampaigns || [];\nconst peopleCampaigns = campaignData.peopleCampaigns || [];\nconst yesterday = dateVars.yesterday;\n\nconst yesterdayStart = new Date(yesterday + 'T00:00:00Z');\nconst yesterdayEnd = new Date(yesterday + 'T23:59:59.999Z');\n\nfunction wasContactedOnDate(lead, date) {\n  const ts = lead.timestamp_last_contact;\n  if (!ts) return false;\n  const d = new Date(ts);\n  const dateStart = new Date(date + 'T00:00:00Z');\n  const dateEnd = new Date(date + 'T23:59:59.999Z');\n  return d >= dateStart && d <= dateEnd;\n}\n\nfunction getEmail(lead) {\n  return (lead.email || '').toLowerCase().trim();\n}\n\nfunction getCampaignStartDate(campaigns) {\n  let earliestDate = null;\n  for (const campaign of campaigns) {\n    const created = campaign.created_at;\n    if (created) {\n      const dateStr = new Date(created).toISOString().split('T')[0];\n      if (!earliestDate || dateStr < earliestDate) {\n        earliestDate = dateStr;\n      }\n    }\n  }\n  return earliestDate || 'N/A';\n}\n\nconst companyLeads = [];\nconst peopleLeads = [];\n\nfor (const item of allLeads) {\n  const lead = item.json;\n  const campaignId = lead.campaign;\n  \n  if (!campaignId) continue;\n  \n  if (companyCampaignIds.has(campaignId)) {\n    companyLeads.push(lead);\n  } else if (peopleCampaignIds.has(campaignId)) {\n    peopleLeads.push(lead);\n  }\n}\n\nconst companyEmailsYesterday = new Set();\nfor (const lead of companyLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) companyEmailsYesterday.add(email);\n  }\n}\n\nconst companyEmailsAllTime = new Set();\nfor (const lead of companyLeads) {\n  const email = getEmail(lead);\n  if (email) companyEmailsAllTime.add(email);\n}\n\nconst peopleEmailsYesterday = new Set();\nfor (const lead of peopleLeads) {\n  if (wasContactedOnDate(lead, yesterday)) {\n    const email = getEmail(lead);\n    if (email) peopleEmailsYesterday.add(email);\n  }\n}\n\nconst peopleEmailsAllTime = new Set();\nfor (const lead of peopleLeads) {\n  const email = getEmail(lead);\n  if (email) peopleEmailsAllTime.add(email);\n}\n\nconst companyStartDate = getCampaignStartDate(companyCampaigns);\nconst peopleStartDate = getCampaignStartDate(peopleCampaigns);\n\nreturn [{\n  json: {\n    daily: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsYesterday.size,\n        date: yesterday\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsYesterday.size,\n        date: yesterday\n      },\n      total: companyEmailsYesterday.size + peopleEmailsYesterday.size\n    },\n    allTime: {\n      companyCampaigns: {\n        uniqueLeadsContacted: companyEmailsAllTime.size,\n        startDate: companyStartDate\n      },\n      peopleCampaigns: {\n        uniqueLeadsContacted: peopleEmailsAllTime.size,\n        startDate: peopleStartDate\n      },\n      total: companyEmailsAllTime.size + peopleEmailsAllTime.size\n    },\n    _meta: {\n      companyCampaignsCount: companyCampaigns.length,\n      peopleCampaignsCount: peopleCampaigns.length,\n      companyLeadsTotal: companyLeads.length,\n      peopleLeadsTotal: peopleLeads.length,\n      totalLeadsProcessed: allLeads.length\n    }\n  }\n}];"
+      },
+      "id": "59554190-cd73-4f00-b633-befb63b525fb",
+      "name": "Calculate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "eadfa27c-50fe-4503-b202-524fc9d958ec",
+      "name": "Daily 9AM ET4",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr\n  }\n}];"
+      },
+      "id": "28092232-0cca-4b7a-82a9-92177334c940",
+      "name": "Set Date Variables4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "054f8310-8289-44d9-9a46-c41493bb00fe",
+      "name": "Fetch All Campaigns4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        1984
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "9f125974-2ec8-4eb9-ab0c-0334b95f3f6e",
+      "name": "Categorize Campaigns4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst fmt = (n) => (n || 0).toLocaleString('en-US');\n\nconst messageText = [\n  `*📊 Outbound Report - ${data.daily.companyCampaigns.date}*`,\n  '',\n  '*📅 Yesterday*',\n  `> *Company Campaigns:* ${fmt(data.daily.companyCampaigns.uniqueLeadsContacted)} unique leads contacted`,\n  `> *People Campaigns:* ${fmt(data.daily.peopleCampaigns.uniqueLeadsContacted)} unique leads contacted`,\n  `> *Total:* ${fmt(data.daily.total)} unique leads contacted`,\n  '',\n  '*📈 All-Time*',\n  `> *Company Campaigns:* ${fmt(data.allTime.companyCampaigns.uniqueLeadsContacted)} unique leads (since ${data.allTime.companyCampaigns.startDate})`,\n  `> *People Campaigns:* ${fmt(data.allTime.peopleCampaigns.uniqueLeadsContacted)} unique leads (since ${data.allTime.peopleCampaigns.startDate})`,\n  `> *Total:* ${fmt(data.allTime.total)} unique leads contacted`,\n  '',\n  `_Report generated at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET_`\n].join('\\n');\n\nreturn [{ json: { messageText, rawData: data } }];"
+      },
+      "id": "799180a0-10c3-4913-8802-9d9132667310",
+      "name": "Format Slack Message4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        1984
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.messageText }}",
+        "otherOptions": {}
+      },
+      "id": "852dcd74-f1e1-47f6-9e0b-d1b58bc5a408",
+      "name": "Send to Slack4",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1408,
+        1984
+      ],
+      "webhookId": "1fa3d01c-5a1f-4225-9009-1c387ddecf42",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignData = $input.first().json;\n\nconst companyCampaignIds = campaignData.companyCampaignIds || [];\nconst peopleCampaignIds = campaignData.peopleCampaignIds || [];\n\nconst items = [];\n\n// Create items for company campaigns\nfor (const campaignId of companyCampaignIds) {\n  items.push({\n    json: {\n      campaign_id: campaignId,\n      campaignType: 'Company',\n      skip: 0,\n      limit: 100,\n      filter: \"FILTER_VAL_CONTACTED\",\n      allLeads: [] // Will accumulate leads across pagination\n    }\n  });\n}\n\n// Create items for people campaigns\nfor (const campaignId of peopleCampaignIds) {\n  items.push({\n    json: {\n      campaign_id: campaignId,\n      campaignType: 'People',\n      skip: 0,\n      limit: 100,\n      filter: \"FILTER_VAL_CONTACTED\",\n      allLeads: [] // Will accumulate leads across pagination\n    }\n  });\n}\n\nconsole.log(`Created ${items.length} campaign items for processing`);\n\nreturn items;"
+      },
+      "id": "374fe864-ce41-4a64-ab8c-b739da4d620b",
+      "name": "Initialize Campaign Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "695d8bab-d577-4838-a869-ae2b0ed8305e",
+      "name": "Loop Over Campaigns",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        240,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"campaign_id\": \"{{ $json.campaign_id }}\",\n  \"limit\": {{ $json.limit }},\n  \"skip\": {{ $json.skip }},\n  \"filter\": \"{{ $json.filter }}\"\n}",
+        "options": {}
+      },
+      "id": "83b71763-e6dc-4578-a9c1-03fe55f97c7c",
+      "name": "Fetch Leads Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        2512
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get current item from loop\nconst currentItem = $input.first().json;\n\n// Get the response from API\nconst apiResponse = currentItem;\n\n// Get leads from response (adjust based on actual API response structure)\nconst newLeads = apiResponse.leads || apiResponse.data || apiResponse.items || [];\n\n// Get accumulated data from context\nconst campaign_id = currentItem.campaign_id || $('Loop Over Campaigns').item.json.campaign_id;\nconst campaignType = currentItem.campaignType || $('Loop Over Campaigns').item.json.campaignType;\nconst currentSkip = $('Loop Over Campaigns').item.json.skip;\nconst allLeads = $('Loop Over Campaigns').item.json.allLeads || [];\n\n// Add new leads to accumulated leads\nconst updatedLeads = [...allLeads, ...newLeads];\n\nconsole.log(`Campaign ${campaign_id}: Fetched ${newLeads.length} leads at skip ${currentSkip}. Total so far: ${updatedLeads.length}`);\n\n// Determine if we need to continue pagination\nconst hasMoreLeads = newLeads.length === 100; // If we got full batch, there might be more\n\nreturn [{\n  json: {\n    campaign_id: campaign_id,\n    campaignType: campaignType,\n    skip: currentSkip + 100, // Increment for next batch\n    limit: 100,\n    filter: \"FILTER_VAL_CONTACTED\",\n    allLeads: updatedLeads,\n    currentBatchSize: newLeads.length,\n    hasMoreLeads: hasMoreLeads,\n    totalLeadsSoFar: updatedLeads.length\n  }\n}];"
+      },
+      "id": "705cc837-9b6a-42ee-b844-a33cb003516d",
+      "name": "Process Batch & Check Pagination",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasMoreLeads }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1eb58ddd-b5c0-4bd0-a897-beb02dc79812",
+      "name": "More Leads?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 0.25
+      },
+      "id": "f86fb4e8-402b-4bc5-b2ac-d1832cb68c5d",
+      "name": "Wait (Rate Limiting)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1008,
+        2528
+      ],
+      "webhookId": "rate-limit-wait"
+    },
+    {
+      "parameters": {},
+      "id": "7a57c450-ffb1-4a57-b2d8-01a6f3d262a5",
+      "name": "Aggregate All Campaign Leads",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        1232,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items (each representing a campaign with all its leads)\nconst items = $input.all();\n\nconst companyCampaignLeads = [];\nconst peopleCampaignLeads = [];\nlet totalLeadsCount = 0;\n\nfor (const item of items) {\n  const campaignId = item.json.campaign_id;\n  const campaignType = item.json.campaignType;\n  const leads = item.json.allLeads || [];\n  \n  totalLeadsCount += leads.length;\n  \n  if (campaignType === 'Company') {\n    companyCampaignLeads.push({\n      campaign_id: campaignId,\n      campaignType: campaignType,\n      leadCount: leads.length,\n      leads: leads\n    });\n  } else if (campaignType === 'People') {\n    peopleCampaignLeads.push({\n      campaign_id: campaignId,\n      campaignType: campaignType,\n      leadCount: leads.length,\n      leads: leads\n    });\n  }\n}\n\nconsole.log(`Total leads fetched: ${totalLeadsCount}`);\nconsole.log(`Company campaigns: ${companyCampaignLeads.length} campaigns with ${companyCampaignLeads.reduce((sum, c) => sum + c.leadCount, 0)} leads`);\nconsole.log(`People campaigns: ${peopleCampaignLeads.length} campaigns with ${peopleCampaignLeads.reduce((sum, c) => sum + c.leadCount, 0)} leads`);\n\nreturn [{\n  json: {\n    companyCampaignLeads: companyCampaignLeads,\n    peopleCampaignLeads: peopleCampaignLeads,\n    totalLeads: totalLeadsCount,\n    totalCompanyCampaigns: companyCampaignLeads.length,\n    totalPeopleCampaigns: peopleCampaignLeads.length,\n    summary: {\n      companyLeadsCount: companyCampaignLeads.reduce((sum, c) => sum + c.leadCount, 0),\n      peopleLeadsCount: peopleCampaignLeads.reduce((sum, c) => sum + c.leadCount, 0)\n    }\n  }\n}];"
+      },
+      "id": "beaa5432-88bb-40ee-9fcf-fee939e9717e",
+      "name": "Organize Final Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 0
+            }
+          ]
+        }
+      },
+      "id": "c1c5f106-0c0b-41ea-bca5-a8084ec4ed6e",
+      "name": "Daily 9AM ET5",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -832,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().split('T')[0];\nconst todayStr = now.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    yesterday: yesterdayStr,\n    today: todayStr\n  }\n}];"
+      },
+      "id": "5357ba35-a642-495f-a8e9-691caceb69b9",
+      "name": "Set Date Variables5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7c084b9e-75a0-4195-af21-36345547d246",
+      "name": "Fetch All Campaigns5",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -432,
+        2448
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allCampaigns = [];\n\nfor (const item of items) {\n  if (item.json.items && Array.isArray(item.json.items)) {\n    allCampaigns.push(...item.json.items);\n  } else if (item.json.id) {\n    allCampaigns.push(item.json);\n  }\n}\n\nconst companyCampaigns = [];\nconst peopleCampaigns = [];\n\nfor (const campaign of allCampaigns) {\n  const name = (campaign.name || '').trim();\n  const nameLower = name.toLowerCase();\n  if (nameLower.startsWith('companies | email')) {\n    companyCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  } else if (nameLower.startsWith('personal | email')) {\n    peopleCampaigns.push({ \n      id: campaign.id, \n      name: name,\n      created_at: campaign.created_at || campaign.createdAt\n    });\n  }\n}\n\nconsole.log(`Found ${companyCampaigns.length} company campaigns, ${peopleCampaigns.length} personal campaigns`);\n\nreturn [{\n  json: {\n    companyCampaignIds: companyCampaigns.map(c => c.id),\n    peopleCampaignIds: peopleCampaigns.map(c => c.id),\n    companyCampaigns,\n    peopleCampaigns,\n    totalCampaigns: allCampaigns.length\n  }\n}];"
+      },
+      "id": "3c8d015f-ba0b-4f45-a0f6-0b8e4a4fd5f7",
+      "name": "Categorize Campaigns5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        2448
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup Instructions\n\n**1. Replace API Key:**\nIn both \"Get Yesterday Stats\" and \"Get All Time Stats\" HTTP Request nodes, replace `YOUR_INSTANTLY_API_KEY` with your actual Instantly API key.\n\n**2. Configure Slack:**\nConnect your Slack credential to the \"Send to Slack\" node and set your target channel ID.\n\n**3. Adjust Schedule (Optional):**\nThe trigger runs daily at 9:00 AM. Adjust the cron expression in the trigger node if needed.\n\n**4. Test:**\nManually execute the workflow once to verify the data before activating.",
+        "height": 360,
+        "width": 340,
+        "color": 4
+      },
+      "id": "2b09bab9-f929-4647-ac23-768ea3806f87",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        -1312
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "454f723e-5f93-4ad9-9ab7-f1dba88c41d2",
+      "name": "Daily 9AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst year = yesterday.getFullYear();\nconst month = String(yesterday.getMonth() + 1).padStart(2, '0');\nconst day = String(yesterday.getDate()).padStart(2, '0');\n\nreturn [{\n  json: {\n    yesterday_date: `${year}-${month}-${day}`\n  }\n}];"
+      },
+      "id": "8d1adce6-d67a-4aed-b19b-765bccefac9c",
+      "name": "Get Yesterday Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $json.yesterday_date }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $json.yesterday_date }}"
+            },
+            {
+              "name": "limit",
+              "value": "200"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c9860590-3cdd-423e-81e1-9ad260e025a0",
+      "name": "Get Yesterday Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst campaigns = response.data || (Array.isArray(response) ? response : [response]);\n\nlet totalContacted = 0;\nfor (const campaign of campaigns) {\n  totalContacted += (campaign.contacted_count || 0);\n}\n\nreturn [{\n  json: {\n    yesterday_contacted: totalContacted\n  }\n}];"
+      },
+      "id": "6bacb4f4-9b1c-4efb-a501-13db65f2a329",
+      "name": "Sum Yesterday Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "200"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1356f793-52b7-4f26-ae8e-ee45995cb2d8",
+      "name": "Get All Time Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        576,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst campaigns = response.data || (Array.isArray(response) ? response : [response]);\n\nlet allTimeContacted = 0;\nfor (const campaign of campaigns) {\n  allTimeContacted += (campaign.contacted_count || 0);\n}\n\n// Get yesterday's count from the earlier node\nconst yesterdayContacted = $('Sum Yesterday Count').first().json.yesterday_contacted;\n\n// Format yesterday's date for display\nconst yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst dateStr = yesterday.toLocaleDateString('en-US', {\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\nconst message = `:bar_chart: *Daily Lead Contact Report*\\n\\n*Leads Contacted Yesterday* (${dateStr}):\\n:arrow_right: *${yesterdayContacted.toLocaleString()}* unique leads\\n\\n*All-Time Leads Contacted:*\\n:arrow_right: *${allTimeContacted.toLocaleString()}* unique leads`;\n\nreturn [{\n  json: {\n    yesterday_contacted: yesterdayContacted,\n    alltime_contacted: allTimeContacted,\n    slack_message: message\n  }\n}];"
+      },
+      "id": "02b8086e-7aa9-4b1a-9ff8-59674cb3b654",
+      "name": "Build Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        -944
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.slack_message }}",
+        "otherOptions": {}
+      },
+      "id": "9c271665-a76d-4ceb-a9f2-13619f374752",
+      "name": "Send to Slack5",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        -944
+      ],
+      "webhookId": "aa616157-b38c-4402-98b4-5c5561a79827",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst year = yesterday.getFullYear();\nconst month = String(yesterday.getMonth() + 1).padStart(2, '0');\nconst day = String(yesterday.getDate()).padStart(2, '0');\nconst yesterdayStr = `${year}-${month}-${day}`;\n\n// ---- CAMPAIGN IDS (edit here to add/remove) ----\nconst companyCampaignIds = [\n  'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n];\nconst peopleCampaignIds = [\n  'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n  'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n  '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n  '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n];\n// ---- END CAMPAIGN IDS ----\n\nconst allIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst baseUrl = 'https://api.instantly.ai/api/v2/campaigns/analytics';\nconst idParams = `id=${allIds[0]}&ids=${allIds.slice(1).join(',')}`;\n\nconst url_yesterday = `${baseUrl}?${idParams}&start_date=${yesterdayStr}&end_date=${yesterdayStr}`;\nconst url_alltime = `${baseUrl}?${idParams}`;\n\nreturn [{\n  json: {\n    yesterday_date: yesterdayStr,\n    url_yesterday,\n    url_alltime\n  }\n}];"
+      },
+      "id": "6faf0d77-1ce3-4a40-8136-7247fee242df",
+      "name": "Build API URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -1744
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_yesterday }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2450a3f2-baa2-4725-b117-f4ebefcd65cd",
+      "name": "Fetch Yesterday Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyIds = new Set([\n    'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n    '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n  ]);\n  const peopleIds = new Set([\n    'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n    'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n    '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n    '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n  ]);\n\n  const items = $input.all();\n  let companyContacted = 0;\n  let peopleContacted = 0;\n\n  for (const item of items) {\n    const c = item.json;\n    const id = c.campaign_id || c.id;\n    const count = c.contacted_count || 0;\n    if (companyIds.has(id)) companyContacted += count;\n    else if (peopleIds.has(id)) peopleContacted += count;\n  }\n\n  return [{\n    json: {\n      company_yesterday: companyContacted,\n      people_yesterday: peopleContacted,\n      total_yesterday: companyContacted + peopleContacted\n    }\n  }];"
+      },
+      "id": "8fe36e5e-4e56-47ff-bc5d-319479a6e4ed",
+      "name": "Process Yesterday",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Build API URLs1').first().json.url_alltime }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "67f95215-8459-4b62-9470-3bdd3a3dabcd",
+      "name": "Fetch All Time Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup Instructions\n\n**1. Replace API Key:**\nIn both HTTP Request nodes (\"Fetch Yesterday Stats\" and \"Fetch All Time Stats\"), replace `YOUR_INSTANTLY_API_KEY` with your actual Instantly API key.\n\n**2. Configure Slack:**\nConnect your Slack credential to the \"Send to Slack\" node and set your target channel ID.\n\n**3. Adjust Schedule (Optional):**\nThe trigger runs daily at 9:00 AM. Adjust the cron expression in the trigger node if needed.\n\n**4. Campaign IDs:**\nAll campaign IDs are defined in the \"Build API URLs\" Code node. To add/remove campaigns, edit the `companyCampaignIds` and `peopleCampaignIds` arrays there AND in the two processing Code nodes.\n\n**5. Test:**\nManually execute the workflow once to verify the data before activating.\n\n**Note:** The API uses `id` + `ids` params. If that doesn't work, try changing to comma-separated `ids` only in the Build API URLs node.",
+        "height": 460,
+        "width": 360,
+        "color": 4
+      },
+      "id": "676c9b1f-1f75-46ce-ab53-d4b4fd0fd8b7",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -1920
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "1aef68a8-9b84-482b-bdc2-8ec3bf5ed4b9",
+      "name": "Daily 9AM Trigger1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -320,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyIds = new Set([\n    'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n    '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n  ]);\n  const peopleIds = new Set([\n    'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n    'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n    '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n    '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n  ]);\n\n  const items = $input.all();\n  let companyAllTime = 0;\n  let peopleAllTime = 0;\n\n  for (const item of items) {\n    const c = item.json;\n    const id = c.campaign_id || c.id;\n    const count = c.contacted_count || 0;\n    if (companyIds.has(id)) companyAllTime += count;\n    else if (peopleIds.has(id)) peopleAllTime += count;\n  }\n\n  const totalAllTime = companyAllTime + peopleAllTime;\n\n  const yd = $('Process Yesterday').first().json;\n\n  const yesterday = new Date();\n  yesterday.setDate(yesterday.getDate() - 1);\n  const dateStr = yesterday.toLocaleDateString('en-US', {\n    weekday: 'long',\n    year: 'numeric',\n    month: 'long',\n    day: 'numeric'\n  });\n\n  const fmt = (n) => n.toLocaleString();\n\n  const message = `:bar_chart: *Daily Lead Contact Report*\\n_${dateStr}_\\n\\n:office: *Company Campaigns*\\nYesterday :arrow_right: *${fmt(yd.company_yesterday)}* unique leads\\nAll-Time :arrow_right:\n  *${fmt(companyAllTime)}* unique leads\\n\\n:busts_in_silhouette: *People Campaigns*\\nYesterday :arrow_right: *${fmt(yd.people_yesterday)}* unique leads\\nAll-Time :arrow_right: *${fmt(peopleAllTime)}* unique\n  leads\\n\\n:chart_with_upwards_trend: *Total*\\nYesterday :arrow_right: *${fmt(yd.total_yesterday)}* unique leads\\nAll-Time :arrow_right: *${fmt(totalAllTime)}* unique leads`;\n\n  return [{\n    json: {\n      slack_message: message,\n      company_yesterday: yd.company_yesterday,\n      people_yesterday: yd.people_yesterday,\n      total_yesterday: yd.total_yesterday,\n      company_alltime: companyAllTime,\n      people_alltime: peopleAllTime,\n      total_alltime: totalAllTime\n    }\n  }];"
+      },
+      "id": "8708ccc1-821f-423f-9f17-bebcf269edf9",
+      "name": "Build Slack Message1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.slack_message }}",
+        "otherOptions": {}
+      },
+      "id": "c2f6a290-4a21-45d8-bada-b4cac8c35e98",
+      "name": "Send to Slack6",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        -1552
+      ],
+      "webhookId": "8dec5096-75fc-4006-9579-b041ade79965",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Setup Instructions\n\n**1. Replace API Key:**\nIn both HTTP Request nodes (\"Fetch Yesterday Stats\" and \"Fetch All Time Stats\"), replace `YOUR_INSTANTLY_API_KEY` with your actual Instantly API key.\n\n**2. Configure Slack:**\nConnect your Slack credential to the \"Send to Slack\" node and set your target channel ID.\n\n**3. Adjust Schedule (Optional):**\nThe trigger runs daily at 9:00 AM. Adjust the cron expression in the trigger node if needed.\n\n**4. Campaign IDs:**\nAll campaign IDs are defined in the \"Build API URLs\" Code node. To add/remove campaigns, edit the `companyCampaignIds` and `peopleCampaignIds` arrays there AND in the two processing Code nodes.\n\n**5. Test:**\nManually execute the workflow once to verify the data before activating.\n\n**Note:** The API uses `id` + `ids` params. If that doesn't work, try changing to comma-separated `ids` only in the Build API URLs node.",
+        "height": 460,
+        "width": 360,
+        "color": 4
+      },
+      "id": "993f140e-06ed-4942-89a8-3d40be716b74",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        -1776
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "203db9f4-b1bb-4774-ae1d-25415396bc68",
+      "name": "Daily 9AM Trigger2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst year = yesterday.getFullYear();\nconst month = String(yesterday.getMonth() + 1).padStart(2, '0');\nconst day = String(yesterday.getDate()).padStart(2, '0');\nconst yesterdayStr = `${year}-${month}-${day}`;\n\n// ---- CAMPAIGN IDS (edit here to add/remove) ----\nconst companyCampaignIds = [\n  'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n];\nconst peopleCampaignIds = [\n  'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n  'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n  '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n  '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n];\n// ---- END CAMPAIGN IDS ----\n\nconst allIds = [...companyCampaignIds, ...peopleCampaignIds];\nconst baseUrl = 'https://api.instantly.ai/api/v2/campaigns/analytics';\nconst idParams = allIds.map(id => `ids=${id}`).join('&');\n\nconst url_yesterday = `${baseUrl}?${idParams}&start_date=${yesterdayStr}&end_date=${yesterdayStr}`;\nconst url_alltime = `${baseUrl}?${idParams}`;\n\nreturn [{\n  json: {\n    yesterday_date: yesterdayStr,\n    url_yesterday,\n    url_alltime\n  }\n}];"
+      },
+      "id": "7288d827-6985-495f-9e05-8ded47792f9b",
+      "name": "Build API URLs1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -1552
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_yesterday }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_INSTANTLY_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2955cc2a-214f-4ee8-be18-ed1a1ecc8e55",
+      "name": "Fetch Yesterday Stats1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyIds = new Set([\n  'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n]);\nconst peopleIds = new Set([\n  'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n  'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n  '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n  '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n]);\n\nconst response = $input.first().json;\nconst campaigns = response.data || (Array.isArray(response) ? response : [response]);\n\nlet companyContacted = 0;\nlet peopleContacted = 0;\n\nfor (const c of campaigns) {\n  const id = c.campaign_id || c.id;\n  const count = c.contacted_count || 0;\n  if (companyIds.has(id)) companyContacted += count;\n  else if (peopleIds.has(id)) peopleContacted += count;\n}\n\nreturn [{\n  json: {\n    company_yesterday: companyContacted,\n    people_yesterday: peopleContacted,\n    total_yesterday: companyContacted + peopleContacted\n  }\n}];"
+      },
+      "id": "f159a8c4-7697-4d9e-8aeb-db1ff3f0dd0a",
+      "name": "Process Yesterday1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Build API URLs1').first().json.url_alltime }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_INSTANTLY_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "156e11c1-aff9-4f2d-b4c3-1f01389c9d00",
+      "name": "Fetch All Time Stats1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyIds = new Set([\n  'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  '45385e29-2383-4e75-9bd5-50fb9ec4db3b'\n]);\nconst peopleIds = new Set([\n  'f3c6666d-d312-44ea-bf5d-36dab3c14ca1',\n  'bf19fef1-7545-41d8-96c9-0bae5b8831e8',\n  '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d',\n  '0bf95669-db4b-4d67-82cc-907e002c4bb8'\n]);\n\nconst response = $input.first().json;\nconst campaigns = response.data || (Array.isArray(response) ? response : [response]);\n\nlet companyAllTime = 0;\nlet peopleAllTime = 0;\n\nfor (const c of campaigns) {\n  const id = c.campaign_id || c.id;\n  const count = c.contacted_count || 0;\n  if (companyIds.has(id)) companyAllTime += count;\n  else if (peopleIds.has(id)) peopleAllTime += count;\n}\n\nconst totalAllTime = companyAllTime + peopleAllTime;\n\nconst yd = $('Process Yesterday1').first().json;\n\nconst yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst dateStr = yesterday.toLocaleDateString('en-US', {\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\nconst fmt = (n) => n.toLocaleString();\n\nconst message = `:bar_chart: *Daily Lead Contact Report*\\n_${dateStr}_\\n\\n:office: *Company Campaigns*\\nYesterday :arrow_right: *${fmt(yd.company_yesterday)}* unique leads\\nAll-Time :arrow_right: *${fmt(companyAllTime)}* unique leads\\n\\n:busts_in_silhouette: *People Campaigns*\\nYesterday :arrow_right: *${fmt(yd.people_yesterday)}* unique leads\\nAll-Time :arrow_right: *${fmt(peopleAllTime)}* unique leads\\n\\n:chart_with_upwards_trend: *Total*\\nYesterday :arrow_right: *${fmt(yd.total_yesterday)}* unique leads\\nAll-Time :arrow_right: *${fmt(totalAllTime)}* unique leads`;\n\nreturn [{\n  json: {\n    slack_message: message,\n    company_yesterday: yd.company_yesterday,\n    people_yesterday: yd.people_yesterday,\n    total_yesterday: yd.total_yesterday,\n    company_alltime: companyAllTime,\n    people_alltime: peopleAllTime,\n    total_alltime: totalAllTime\n  }\n}];"
+      },
+      "id": "3cc270c2-32a9-41a2-80a0-ed89dc0fab8d",
+      "name": "Build Slack Message2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "={{ $json.slack_message }}",
+        "otherOptions": {}
+      },
+      "id": "1138e955-ff13-4401-97f1-29c149efd6c9",
+      "name": "Send to Slack7",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -1200
+      ],
+      "webhookId": "8ec307a3-cef0-449c-ab74-b30cb1e22236"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "sendTo": "padavalaabhayanjaneyulu@gmail.com",
+        "subject": "Hello World!",
+        "emailType": "text",
+        "message": "Hiee this is Abhay, testing.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        192
+      ],
+      "id": "87b0e3ec-5634-4172-8bac-1f87a3ddfbd6",
+      "name": "Send a message",
+      "webhookId": "2e26e9e2-309f-47db-a59c-e8f56e64cc7e",
+      "credentials": {
+        "googleApi": {
+          "id": "oN3ERcTqOokqLlqY",
+          "name": "Abhay- Notifications Service Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "getMany",
+        "returnAll": true,
+        "filters": {
+          "filter": "FILTER_VAL_CONTACTED",
+          "campaign": {
+            "__rl": true,
+            "value": "f3c6666d-d312-44ea-bf5d-36dab3c14ca1",
+            "mode": "list",
+            "cachedResultName": "Personal | Email V2 (Pain Hook) | Jan 28th, 2026 | BATCH 1 Inboxes"
+          }
+        }
+      },
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        400,
+        192
+      ],
+      "id": "29c37192-4246-44bc-827b-1aa0723ad740",
+      "name": "Get many leads",
+      "credentials": {
+        "instantlyApi": {
+          "id": "hBJ3AVlCAD44neIC",
+          "name": "Abhay-RMG Instantly account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "5091a8d9-121a-469f-b529-82c503c5ab93",
+      "name": "Every Day at 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        -2944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate yesterday's date range in UTC ISO format\nconst now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    dateFrom: yesterdayStart.toISOString(),\n    dateTo: yesterdayEnd.toISOString(),\n    dateLabel: yesterdayStart.toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "4ff14b0c-7156-49c0-9332-b5975ec281b1",
+      "name": "Build Date Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -2944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Paginate through ALL leads from Instantly API\n// POST /api/v2/leads/list  – status 1 = Contacted\n\nconst INSTANTLY_API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\"; // set as n8n env var\nconst CAMPAIGN_ID = \"cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3\";  // set as n8n env var\n\nconst { dateFrom, dateTo, dateLabel } = $input.first().json;\n\nconst BASE_URL = 'https://api.instantly.ai/api/v2/leads/list';\nconst LIMIT = 100;\n\nlet allLeads = [];\nlet startingAfter = null;\nlet hasMore = true;\n\nwhile (hasMore) {\n  const body = {\n    limit: LIMIT,\n    filter: {\n      campaign_id: CAMPAIGN_ID,\n      status: 1,                          // 1 = Contacted\n      timestamp_last_contact_from: dateFrom,\n      timestamp_last_contact_to: dateTo\n    }\n  };\n\n  if (startingAfter) {\n    body.starting_after = startingAfter;\n  }\n\n  const response = await fetch(BASE_URL, {\n    method: 'POST',\n    headers: {\n      'Authorization': `Bearer ${INSTANTLY_API_KEY}`,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify(body)\n  });\n\n  if (!response.ok) {\n    throw new Error(`Instantly API error: ${response.status} ${await response.text()}`);\n  }\n\n  const data = await response.json();\n  const items = data.items || [];\n  allLeads = allLeads.concat(items);\n\n  if (items.length < LIMIT || !data.next_starting_after) {\n    hasMore = false;\n  } else {\n    startingAfter = data.next_starting_after;\n  }\n}\n\n// Dedupe by company_domain (case-insensitive, ignore empty)\nconst seenDomains = new Set();\nfor (const lead of allLeads) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nconst uniqueDomainCount = seenDomains.size;\nconst totalLeads = allLeads.length;\n\nreturn [{\n  json: {\n    dateLabel,\n    totalLeads,\n    uniqueDomainCount\n  }\n}];"
+      },
+      "id": "6f7a1789-a22a-454a-a495-ae00adc13f74",
+      "name": "Fetch Leads & Dedupe Domains",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -2944
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "9ad60d4c-6117-4eb4-8b0c-4b5ffd79331a",
+      "name": "Send to Slack8",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        -2944
+      ],
+      "webhookId": "e8eb4c81-13ba-41b4-a0c2-93553c1c94c0",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "IEvus0zEMbhmp7Oe",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "929b9f44-ed87-4f5c-bc7f-d0a5a48ce75b",
+      "name": "Every Day at 9 AM1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        -3264
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate yesterday's date range in UTC ISO format\nconst now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    dateFrom: yesterdayStart.toISOString(),\n    dateTo: yesterdayEnd.toISOString(),\n    dateLabel: yesterdayStart.toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "f928f69e-a184-42f9-994a-a177c436dbe5",
+      "name": "Build Date Range1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -3264
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Paginate through ALL leads from Instantly API\n// POST /api/v2/leads/list  – status 1 = Contacted\n// Uses $http instead of fetch (compatible with n8n 2.0.x self-hosted)\n\nconst INSTANTLY_API_KEY = \"YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ==\";\nconst CAMPAIGN_ID = \"cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3\";\n\nconst { dateFrom, dateTo, dateLabel } = $input.first().json;\n\nconst BASE_URL = 'https://api.instantly.ai/api/v2/leads/list';\nconst LIMIT = 100;\n\nlet allLeads = [];\nlet startingAfter = null;\nlet hasMore = true;\n\nwhile (hasMore) {\n  const body = {\n    limit: LIMIT,\n    filter: {\n      campaign_id: CAMPAIGN_ID,\n      status: 1,\n      timestamp_last_contact_from: dateFrom,\n      timestamp_last_contact_to: dateTo\n    }\n  };\n\n  if (startingAfter) {\n    body.starting_after = startingAfter;\n  }\n\n  const response = await $http({\n    method: 'POST',\n    url: BASE_URL,\n    headers: {\n      'Authorization': `Bearer ${INSTANTLY_API_KEY}`,\n      'Content-Type': 'application/json'\n    },\n    body,\n    json: true\n  });\n\n  const items = response.items || [];\n  allLeads = allLeads.concat(items);\n\n  if (items.length < LIMIT || !response.next_starting_after) {\n    hasMore = false;\n  } else {\n    startingAfter = response.next_starting_after;\n  }\n}\n\n// Dedupe by company_domain (case-insensitive, ignore empty)\nconst seenDomains = new Set();\nfor (const lead of allLeads) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nconst uniqueDomainCount = seenDomains.size;\nconst totalLeads = allLeads.length;\n\nreturn [{\n  json: {\n    dateLabel,\n    totalLeads,\n    uniqueDomainCount\n  }\n}];"
+      },
+      "id": "d22b7b7c-e5b5-4cd6-ba6b-0bb6fc961924",
+      "name": "Fetch Leads & Dedupe Domains1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -3264
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "3f021180-a100-4bb4-bcc3-c948fd44548d",
+      "name": "Send to Slack9",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -3264
+      ],
+      "webhookId": "7041c1dd-5245-4cb4-8a5c-ab2a69bd280b",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "IEvus0zEMbhmp7Oe",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YjI4NWQ4ZGItY2VkZi00YTNiLTg2NTUtOTJiMTI1YzBmMDhmOmNGdGhMU3dvSGx3TQ=="
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"limit\": 100,\n  \"filter\": {\n    \"campaign_id\": \"cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3\",\n    \"status\": 1,\n    \"timestamp_last_contact_from\": \"{{ $json.dateFrom }}\",\n    \"timestamp_last_contact_to\": \"{{ $json.dateTo }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "9ca4bf9c-e2de-41b7-99ab-64551337eea3",
+      "name": "Fetch Leads Page 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        -3856
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const page1 = $input.first().json;\nconst items = page1.items || [];\nconst nextCursor = page1.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: $('Build Date Range2').first().json.dateFrom,\n    dateTo: $('Build Date Range2').first().json.dateTo,\n    dateLabel: $('Build Date Range2').first().json.dateLabel,\n    allLeads: items,\n    nextCursor,\n    hasMore: items.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "474fd55c-7139-4945-b6da-9802ffe463e7",
+      "name": "Collect Page 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -3856
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"limit\": 100,\n  \"starting_after\": \"{{ $json.nextCursor }}\",\n  \"filter\": {\n    \"campaign_id\": \"cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3\",\n    \"status\": 1,\n    \"timestamp_last_contact_from\": \"{{ $json.dateFrom }}\",\n    \"timestamp_last_contact_to\": \"{{ $json.dateTo }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "b38a8af4-221e-4f82-826e-8a6c4c064ab5",
+      "name": "Fetch Leads Page 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        -4000
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 1').first().json;\nconst page2 = $input.first().json;\nconst newItems = page2.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\nconst nextCursor = page2.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads,\n    nextCursor,\n    hasMore: newItems.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "aeb19545-dc0f-4b04-a06d-6edecea1aa92",
+      "name": "Collect Page 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        -4000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"limit\": 100,\n  \"starting_after\": \"{{ $json.nextCursor }}\",\n  \"filter\": {\n    \"campaign_id\": \"cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3\",\n    \"status\": 1,\n    \"timestamp_last_contact_from\": \"{{ $json.dateFrom }}\",\n    \"timestamp_last_contact_to\": \"{{ $json.dateTo }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "dc059c31-fc22-4234-8329-1f418e4714e6",
+      "name": "Fetch Leads Page 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        -3728
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 2').first().json;\nconst page3 = $input.first().json;\nconst newItems = page3.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\n\nreturn [{\n  json: {\n    dateLabel: prev.dateLabel,\n    allLeads\n  }\n}];"
+      },
+      "id": "f30835dc-4379-4f9a-94fc-10cffa4d137e",
+      "name": "Collect Page 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -3728
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst allLeads = input.allLeads;\n\nconst seenDomains = new Set();\nfor (const lead of allLeads) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nreturn [{\n  json: {\n    dateLabel: input.dateLabel,\n    totalLeads: allLeads.length,\n    uniqueDomainCount: seenDomains.size\n  }\n}];"
+      },
+      "id": "721ac27a-a086-45a0-95b7-e9009083dfbc",
+      "name": "Dedupe & Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -3856
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "4b472af6-dee0-4093-bcfc-bb17d4226970",
+      "name": "Every Day at 9 AM2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        -3856
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    dateFrom: yesterdayStart.toISOString(),\n    dateTo: yesterdayEnd.toISOString(),\n    dateLabel: yesterdayStart.toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "25eff462-2c5d-4d24-9977-f2fc609eb0fa",
+      "name": "Build Date Range2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -3856
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "cbb66875-7630-4a62-a956-1ba5ef622f9d",
+      "name": "Send to Slack10",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        -3856
+      ],
+      "webhookId": "9ff5ff44-2e78-4b0b-a433-8464b28d2c64",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "IEvus0zEMbhmp7Oe",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "83c899ab-e415-4c48-a204-1fdb81b2ed35",
+      "name": "Every Day at 9 AM3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -4432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nconst dateFrom = yesterdayStart.toISOString();\nconst dateTo = yesterdayEnd.toISOString();\nconst dateLabel = yesterdayStart.toISOString().split('T')[0];\n\n// Pre-build the filter string since Instantly API requires filter as a JSON string\nconst filterString = JSON.stringify({\n  campaign_id: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  status: 1,\n  timestamp_last_contact_from: dateFrom,\n  timestamp_last_contact_to: dateTo\n});\n\nreturn [{\n  json: {\n    dateFrom,\n    dateTo,\n    dateLabel,\n    filterString\n  }\n}];"
+      },
+      "id": "c16d7bea-b29e-4bc3-8a61-abde71a415f2",
+      "name": "Build Date Range3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -4432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"limit\": 100, \"filter\": {{ $json.filterString }} }",
+        "options": {}
+      },
+      "id": "1b4777e4-323c-48ba-9139-a04fb4b8d4d9",
+      "name": "Fetch Leads Page ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        -4432
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const page1 = $input.first().json;\nconst items = page1.items || [];\nconst nextCursor = page1.next_starting_after || null;\n\nconst prev = $('Build Date Range3').first().json;\n\n// Rebuild filter string with same dates for page 2 if needed\nconst filterString = JSON.stringify({\n  campaign_id: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  status: 1,\n  timestamp_last_contact_from: prev.dateFrom,\n  timestamp_last_contact_to: prev.dateTo\n});\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    filterString,\n    allLeads: items,\n    nextCursor,\n    hasMore: items.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "eb105d82-a4b1-408f-a461-baa85dc544af",
+      "name": "Collect Page ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -4432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"limit\": 100, \"starting_after\": \"{{ $json.nextCursor }}\", \"filter\": {{ $json.filterString }} }",
+        "options": {}
+      },
+      "id": "efa4040a-c5a9-41a0-9653-ffe57fcd2273",
+      "name": "Fetch Leads Page 4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        -4560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page ').first().json;\nconst page2 = $input.first().json;\nconst newItems = page2.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\nconst nextCursor = page2.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    filterString: prev.filterString,\n    allLeads,\n    nextCursor,\n    hasMore: newItems.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "f6bd5a36-da73-443e-8e4c-55374e84a3dd",
+      "name": "Collect Page 4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -4560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"limit\": 100, \"starting_after\": \"{{ $json.nextCursor }}\", \"filter\": {{ $json.filterString }} }",
+        "options": {}
+      },
+      "id": "bc497243-d3c2-40f7-9aa8-e50311561169",
+      "name": "Fetch Leads Page 5",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        768,
+        -4288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 4').first().json;\nconst page3 = $input.first().json;\nconst newItems = page3.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\n\nreturn [{\n  json: {\n    dateLabel: prev.dateLabel,\n    allLeads\n  }\n}];"
+      },
+      "id": "26e557f5-cb43-4f9d-8019-4642d301b637",
+      "name": "Collect Page 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -4288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst allLeads = input.allLeads;\n\nconst seenDomains = new Set();\nfor (const lead of allLeads) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nreturn [{\n  json: {\n    dateLabel: input.dateLabel,\n    totalLeads: allLeads.length,\n    uniqueDomainCount: seenDomains.size\n  }\n}];"
+      },
+      "id": "3d50a182-fdc1-47d0-806c-cc3561e4156e",
+      "name": "Dedupe & Count1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        -4432
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "60e8d369-c6fc-4a48-8c34-e0e85d2a3790",
+      "name": "Send to Slack11",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1424,
+        -4432
+      ],
+      "webhookId": "16100edf-9aad-4b07-8d0c-8bebd6cd4633",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "IEvus0zEMbhmp7Oe",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\n\nconst filterObj = {\n  campaign_id: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  status: 1,\n  timestamp_last_contact_from: prev.dateFrom,\n  timestamp_last_contact_to: prev.dateTo\n};\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  starting_after: prev.nextCursor,\n  filter: JSON.stringify(filterObj)\n});\n\nreturn [{ json: { ...prev, rawBody } }];"
+      },
+      "id": "9e010610-dee1-43eb-a84c-325b1e1eaaa3",
+      "name": "Prep Page 2 Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -5296
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\n\nconst filterObj = {\n  campaign_id: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  status: 1,\n  timestamp_last_contact_from: prev.dateFrom,\n  timestamp_last_contact_to: prev.dateTo\n};\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  starting_after: prev.nextCursor,\n  filter: JSON.stringify(filterObj)\n});\n\nreturn [{ json: { ...prev, rawBody } }];"
+      },
+      "id": "02ce3e3d-3b3f-47c3-8b7e-17d24c30e145",
+      "name": "Prep Page 3 Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -5040
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "6ff8e86c-d033-45f6-8777-ecbf7565876a",
+      "name": "Every Day at 9 AM4",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        -5152
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nconst dateFrom = yesterdayStart.toISOString();\nconst dateTo = yesterdayEnd.toISOString();\nconst dateLabel = yesterdayStart.toISOString().split('T')[0];\n\n// Build the ENTIRE request body as a raw string.\n// filter must be a JSON string (not object) per Instantly API.\nconst filterObj = {\n  campaign_id: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  status: 1,\n  timestamp_last_contact_from: dateFrom,\n  timestamp_last_contact_to: dateTo\n};\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  filter: JSON.stringify(filterObj)\n});\n\nreturn [{\n  json: {\n    dateFrom,\n    dateTo,\n    dateLabel,\n    rawBody\n  }\n}];"
+      },
+      "id": "3c69bc45-fc81-4267-a3ff-279a20eb1a12",
+      "name": "Build Date Range4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -5152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "c9c79b29-6af1-4240-880c-e4a2d4998675",
+      "name": "Fetch Leads Page 6",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        -5152
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const page1 = $input.first().json;\nconst items = page1.items || [];\nconst nextCursor = page1.next_starting_after || null;\nconst prev = $('Build Date Range4').first().json;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads: items,\n    nextCursor,\n    hasMore: items.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "104f57fc-f429-4e10-8c2a-1071e18333a9",
+      "name": "Collect Page 6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -5152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "9e772260-345c-464b-a306-76672a283ae2",
+      "name": "Fetch Leads Page 7",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        832,
+        -5296
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 6').first().json;\nconst page2 = $input.first().json;\nconst newItems = page2.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\nconst nextCursor = page2.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads,\n    nextCursor,\n    hasMore: newItems.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "b1b73490-5e4a-4dbd-affb-89e3f7e4f289",
+      "name": "Collect Page 7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -5296
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "185f3d00-fa8a-4540-b483-e6b1b0c7c84a",
+      "name": "Fetch Leads Page 8",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        -5040
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 7').first().json;\nconst page3 = $input.first().json;\nconst newItems = page3.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\n\nreturn [{\n  json: {\n    dateLabel: prev.dateLabel,\n    allLeads\n  }\n}];"
+      },
+      "id": "7eb9aa52-f1f7-4c74-aa63-f5249a967192",
+      "name": "Collect Page 8",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        -5040
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst allLeads = input.allLeads;\n\nconst seenDomains = new Set();\nfor (const lead of allLeads) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nreturn [{\n  json: {\n    dateLabel: input.dateLabel,\n    totalLeads: allLeads.length,\n    uniqueDomainCount: seenDomains.size\n  }\n}];"
+      },
+      "id": "54091dd3-8f5e-4c31-b29b-86314422f00d",
+      "name": "Dedupe & Count2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -5152
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "13713733-2422-4307-8f76-7ea238bc2d04",
+      "name": "Send to Slack12",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1824,
+        -5152
+      ],
+      "webhookId": "c71b884f-36a7-4a0c-9a02-c9c0bd48597a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "IEvus0zEMbhmp7Oe",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build page 1 raw body.\n// IMPORTANT: filter is a top-level ENUM STRING (e.g. 'FILTER_VAL_CONTACTED').\n// campaign is a separate top-level field (not inside filter).\n// Date filtering is NOT supported by the API — we do it client-side after fetching.\nconst prev = $input.first().json;\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  filter: 'FILTER_VAL_CONTACTED',\n  campaign: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3'\n});\n\nreturn [{ json: { ...prev, rawBody } }];"
+      },
+      "id": "4eb0903a-c10a-4d95-9c1a-0c68e72a6a30",
+      "name": "Prep Page 1 Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -6320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The API doesn't support date range filtering — we filter client-side.\n// Keep only leads whose timestamp_last_contact falls within yesterday.\nconst input = $input.first().json;\nconst allLeads = input.allLeads;\nconst dateFrom = new Date(input.dateFrom);\nconst dateTo = new Date(input.dateTo);\n\nconst filtered = allLeads.filter(lead => {\n  if (!lead.timestamp_last_contact) return false;\n  const ts = new Date(lead.timestamp_last_contact);\n  return ts >= dateFrom && ts <= dateTo;\n});\n\n// Dedupe by company_domain\nconst seenDomains = new Set();\nfor (const lead of filtered) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nreturn [{\n  json: {\n    dateLabel: input.dateLabel,\n    totalLeads: filtered.length,\n    uniqueDomainCount: seenDomains.size\n  }\n}];"
+      },
+      "id": "d42dd6b0-a499-4c1a-b7e1-966b4bfb6938",
+      "name": "Filter Yesterday & Dedupe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -6320
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "6eb04081-c6ab-4a35-8411-f43de641062e",
+      "name": "Every Day at 9 AM5",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -6320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    dateFrom: yesterdayStart.toISOString(),\n    dateTo: yesterdayEnd.toISOString(),\n    dateLabel: yesterdayStart.toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "bb7696fb-df18-450b-95e9-fa83c1658bde",
+      "name": "Build Date Range5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -6320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "081132af-2979-48e2-abf5-1607ac9f9b23",
+      "name": "Fetch Leads Page 9",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        -6320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const page = $input.first().json;\nconst prev = $('Build Date Range5').first().json;\nconst items = page.items || [];\nconst nextCursor = page.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads: items,\n    nextCursor,\n    hasMore: items.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "38922dbb-83b2-4dee-9d51-3e851d401624",
+      "name": "Collect Page 9",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -6320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  filter: 'FILTER_VAL_CONTACTED',\n  campaign: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  starting_after: prev.nextCursor\n});\n\nreturn [{ json: { ...prev, rawBody } }];"
+      },
+      "id": "37d1741c-4de6-4036-89c7-4a3eab27125f",
+      "name": "Prep Page 2 Body1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -6464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "49a43310-55e7-4a95-8a0d-ca43d314604e",
+      "name": "Fetch Leads Page 10",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -6464
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 9').first().json;\nconst page = $input.first().json;\nconst newItems = page.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\nconst nextCursor = page.next_starting_after || null;\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads,\n    nextCursor,\n    hasMore: newItems.length === 100 && nextCursor !== null\n  }\n}];"
+      },
+      "id": "7eab106b-c353-4457-924c-335871076f0d",
+      "name": "Collect Page 10",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -6464
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\n\nconst rawBody = JSON.stringify({\n  limit: 100,\n  filter: 'FILTER_VAL_CONTACTED',\n  campaign: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3',\n  starting_after: prev.nextCursor\n});\n\nreturn [{ json: { ...prev, rawBody } }];"
+      },
+      "id": "8a18a773-bcb2-4812-9f46-48af5b1bf69c",
+      "name": "Prep Page 3 Body1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -6192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "aea70330-be26-442d-833f-d2196c5f07d4",
+      "name": "Fetch Leads Page 11",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        -6192
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Collect Page 10').first().json;\nconst page = $input.first().json;\nconst newItems = page.items || [];\nconst allLeads = prev.allLeads.concat(newItems);\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    allLeads\n  }\n}];"
+      },
+      "id": "3099e48f-479b-4589-9b87-2d7b41fb5fcd",
+      "name": "Collect Page 11",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        -6192
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "52dcea9a-17e1-4c67-9e62-6360e63bbec7",
+      "name": "Send to Slack13",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1952,
+        -6320
+      ],
+      "webhookId": "0ae4d206-f3df-4f9c-97d6-b6d6555becde",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build yesterday's date range\nconst now = new Date();\n\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nconst CAMPAIGN_ID = 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3';\n\n// Page 1 body — no starting_after\nconst rawBody = JSON.stringify({\n  limit: 100,\n  campaign: CAMPAIGN_ID,\n  filter: 'FILTER_VAL_CONTACTED'\n});\n\nreturn [{\n  json: {\n    dateFrom: yesterdayStart.toISOString(),\n    dateTo: yesterdayEnd.toISOString(),\n    dateLabel: yesterdayStart.toISOString().split('T')[0],\n    campaignId: CAMPAIGN_ID,\n    rawBody,\n    allLeads: [],\n    pageNum: 1\n  }\n}];"
+      },
+      "id": "2f7473ca-d6a6-4df1-97ed-04c85b805ccc",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -6960
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
+      },
+      "id": "1c9556f4-92ec-478c-a0ce-89e721a58007",
+      "name": "Fetch Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        -6960
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "deuU8tBZt5IDvIe0",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Accumulate leads from this page into allLeads carried forward\nconst page = $input.first().json;\nconst prev = $('Initialize').first().json;\n\n// On page 1, prev.allLeads = []. On subsequent pages we need to\n// retrieve the running total from the trigger node output.\n// Since n8n re-runs from Initialize each loop iteration is manual,\n// we store state differently: grab allLeads from the context node.\n// For this linear approach, we use a workaround: store allLeads\n// in the workflow static data via $getWorkflowStaticData.\n\nconst staticData = $getWorkflowStaticData('node');\n\nif (!staticData.allLeads) {\n  staticData.allLeads = [];\n}\n\nconst newItems = page.items || [];\nstaticData.allLeads = staticData.allLeads.concat(newItems);\n\nconst nextCursor = page.next_starting_after || null;\nconst hasMore = newItems.length === 100 && nextCursor !== null;\n\nconst campaignId = prev.campaignId;\n\n// Build next page body if needed\nconst nextBody = JSON.stringify({\n  limit: 100,\n  campaign: campaignId,\n  filter: 'FILTER_VAL_CONTACTED',\n  starting_after: nextCursor\n});\n\nreturn [{\n  json: {\n    dateFrom: prev.dateFrom,\n    dateTo: prev.dateTo,\n    dateLabel: prev.dateLabel,\n    campaignId,\n    rawBody: nextBody,\n    nextCursor,\n    hasMore,\n    pageCount: (staticData.allLeads.length / 100)\n  }\n}];"
+      },
+      "id": "cfb2023c-10f3-4867-92c2-b22531e2f425",
+      "name": "Accumulate Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -6960
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-more",
+              "leftValue": "={{ $json.hasMore }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dd6ebff7-8d39-48be-af33-533773944310",
+      "name": "More Pages?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -6960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read from Accumulate Leads node's static data (that's where it was saved)\nconst staticData = $getWorkflowStaticData('node');\n\n// Try alternate: pass allLeads through input instead\nconst input = $input.first().json;\nconst allLeads = input.allLeads || [];\n\nconst dateFrom = new Date(input.dateFrom);\nconst dateTo = new Date(input.dateTo);\n\nconst filtered = allLeads.filter(lead => {\n  if (!lead.timestamp_last_contact) return false;\n  const ts = new Date(lead.timestamp_last_contact);\n  return ts >= dateFrom && ts <= dateTo;\n});\n\nconst seenDomains = new Set();\nfor (const lead of filtered) {\n  const domain = (lead.company_domain || '').trim().toLowerCase();\n  if (domain) seenDomains.add(domain);\n}\n\nreturn [{\n  json: {\n    dateLabel: input.dateLabel,\n    totalLeads: filtered.length,\n    uniqueDomainCount: seenDomains.size,\n    totalFetched: allLeads.length\n  }\n}];"
+      },
+      "id": "78ccee16-91a5-4eaa-8a05-c4229678c3f5",
+      "name": "Filter & Dedupe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        -6944
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "691f2ccb-7087-4d22-8b12-2a37ac3bc21e",
+      "name": "Every Day at 9 AM6",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        -6960
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=📊 *Instantly Daily Report – {{ $json.dateLabel }}*\n\n✅ *{{ $json.uniqueDomainCount }}* unique domains contacted yesterday\n_({{ $json.totalLeads }} total leads across all email addresses)_",
+        "otherOptions": {}
+      },
+      "id": "d71ea83f-87b4-4927-b6a4-e13e7c01ee13",
+      "name": "Send to Slack14",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        -6944
+      ],
+      "webhookId": "476f30f5-925b-48f1-9f05-d6c6111b5756"
+    }
+  ],
+  "connections": {
+    "On Error": {
+      "main": [
+        [
+          {
+            "node": "Send Error to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET1": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables1": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns1": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Analytics2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All-Time Analytics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Leads Fetch & Dedup1": {
+      "main": [
+        [
+          {
+            "node": "Merge Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All-Time Leads Fetch & Dedup1": {
+      "main": [
+        [
+          {
+            "node": "Merge Results1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results1": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message1": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All-Time Analytics1": {
+      "main": [
+        [
+          {
+            "node": "All-Time Leads Fetch & Dedup1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Analytics2": {
+      "main": [
+        [
+          {
+            "node": "Daily Leads Fetch & Dedup1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Fetch leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Leads Fetch & Dedup": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message2": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Results2": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All-Time Leads Fetch & Dedup2": {
+      "main": [
+        [
+          {
+            "node": "Merge Results2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Daily Leads Fetch & Dedup2": {
+      "main": [
+        [
+          {
+            "node": "Merge Results2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All-Time Analytics2": {
+      "main": [
+        [
+          {
+            "node": "All-Time Leads Fetch & Dedup2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Analytics1": {
+      "main": [
+        [
+          {
+            "node": "Daily Leads Fetch & Dedup2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns2": {
+      "main": [
+        [
+          {
+            "node": "Fetch All-Time Analytics2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Daily Analytics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns2": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables2": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET2": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch leads": {
+      "main": [
+        [
+          {
+            "node": "Daily Leads Fetch & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch & Count Unique Leads": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET3": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables3": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns3": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns3": {
+      "main": [
+        [
+          {
+            "node": "Fetch & Count Unique Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message3": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Campaigns for HTTP": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads from Instantly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads from Instantly": {
+      "main": [
+        [
+          {
+            "node": "Flatten HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten HTTP Response": {
+      "main": [
+        [
+          {
+            "node": "Calculate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET4": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables4": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns4": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns4": {
+      "main": [
+        [
+          {
+            "node": "Split Campaigns for HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message4": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Campaign Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Aggregate All Campaign Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Leads Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Batch": {
+      "main": [
+        [
+          {
+            "node": "Process Batch & Check Pagination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Batch & Check Pagination": {
+      "main": [
+        [
+          {
+            "node": "More Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Leads?": {
+      "main": [
+        [
+          {
+            "node": "Wait (Rate Limiting)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limiting)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate All Campaign Leads": {
+      "main": [
+        [
+          {
+            "node": "Organize Final Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM ET5": {
+      "main": [
+        [
+          {
+            "node": "Set Date Variables5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date Variables5": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns5": {
+      "main": [
+        [
+          {
+            "node": "Categorize Campaigns5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Campaigns5": {
+      "main": [
+        [
+          {
+            "node": "Initialize Campaign Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Yesterday Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Yesterday Date": {
+      "main": [
+        [
+          {
+            "node": "Get Yesterday Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Yesterday Stats": {
+      "main": [
+        [
+          {
+            "node": "Sum Yesterday Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sum Yesterday Count": {
+      "main": [
+        [
+          {
+            "node": "Get All Time Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Time Stats": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build API URLs": {
+      "main": [
+        []
+      ]
+    },
+    "Fetch Yesterday Stats": {
+      "main": [
+        [
+          {
+            "node": "Process Yesterday",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Yesterday": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Time Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Time Stats": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Build API URLs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Message1": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9AM Trigger2": {
+      "main": [
+        []
+      ]
+    },
+    "Build API URLs1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Yesterday Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Yesterday Stats1": {
+      "main": [
+        [
+          {
+            "node": "Process Yesterday1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Yesterday1": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Time Stats1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Time Stats1": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Message2": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Get many leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads & Dedupe Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads & Dedupe Domains": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM1": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads & Dedupe Domains1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads & Dedupe Domains1": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 1": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 2": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 2": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 3": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 3": {
+      "main": [
+        [
+          {
+            "node": "Dedupe & Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe & Count": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM2": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range2": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM3": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range3": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page ": {
+      "main": [
+        [
+          {
+            "node": "Collect Page ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page ": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 4": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 4": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 5": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 5": {
+      "main": [
+        [
+          {
+            "node": "Dedupe & Count1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe & Count1": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Page 2 Body": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Page 3 Body": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM4": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range4": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 6": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 6": {
+      "main": [
+        [
+          {
+            "node": "Prep Page 2 Body",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 7": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 7": {
+      "main": [
+        [
+          {
+            "node": "Prep Page 3 Body",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dedupe & Count2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 8": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 8": {
+      "main": [
+        [
+          {
+            "node": "Dedupe & Count2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe & Count2": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Page 1 Body": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Yesterday & Dedupe": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM5": {
+      "main": [
+        [
+          {
+            "node": "Build Date Range5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range5": {
+      "main": [
+        [
+          {
+            "node": "Prep Page 1 Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 9": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 9": {
+      "main": [
+        [
+          {
+            "node": "Prep Page 2 Body1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Yesterday & Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Page 2 Body1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 10": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 10": {
+      "main": [
+        [
+          {
+            "node": "Prep Page 3 Body1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Yesterday & Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Page 3 Body1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads Page 11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads Page 11": {
+      "main": [
+        [
+          {
+            "node": "Collect Page 11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Page 11": {
+      "main": [
+        [
+          {
+            "node": "Filter Yesterday & Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Page": {
+      "main": [
+        [
+          {
+            "node": "Accumulate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accumulate Leads": {
+      "main": [
+        [
+          {
+            "node": "More Pages?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Pages?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter & Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Dedupe": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day at 9 AM6": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Fetch & Count Unique Leads": [
+      {
+        "json": {
+          "daily": {
+            "companyCampaigns": {
+              "uniqueLeadsContacted": 0,
+              "date": "2026-02-15"
+            },
+            "peopleCampaigns": {
+              "uniqueLeadsContacted": 0,
+              "date": "2026-02-15"
+            },
+            "total": 0
+          },
+          "allTime": {
+            "companyCampaigns": {
+              "uniqueLeadsContacted": 0,
+              "startDate": "N/A"
+            },
+            "peopleCampaigns": {
+              "uniqueLeadsContacted": 0,
+              "startDate": "N/A"
+            },
+            "total": 0
+          },
+          "_meta": {
+            "companyCampaignsCount": 2,
+            "peopleCampaignsCount": 4,
+            "companyLeadsTotal": 0,
+            "peopleLeadsTotal": 0
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {}
+}
