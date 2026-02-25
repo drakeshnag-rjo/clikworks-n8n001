@@ -1,0 +1,175 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "9a7d8240-d542-4b37-b24b-3943a58290ce",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -496,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { campaignId: 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3', campaignName: 'Companies | Email V1 | Jan 29th, 2026 | BATCH 2 Inboxes',          dedupeField: 'website'  } },\n  { json: { campaignId: '45385e29-2383-4e75-9bd5-50fb9ec4db3b', campaignName: 'Companies | Email V2 | Feb 4th, 2026 | BATCH 1 Inboxes',            dedupeField: 'website'  } },\n  { json: { campaignId: '0bf95669-db4b-4d67-82cc-907e002c4bb8', campaignName: 'Personal | Email V1 (Plain) | Jan 28th, 2026 | BATCH 1 Inboxes',    dedupeField: 'fullName' } },\n  { json: { campaignId: 'f3c6666d-d312-44ea-bf5d-36dab3c14ca1', campaignName: 'Personal | Email V2 (Pain Hook) | Jan 28th, 2026 | BATCH 1 Inboxes', dedupeField: 'fullName' } },\n  { json: { campaignId: '8b045d3a-2b31-4ecc-999d-6e2deeac7f0d', campaignName: 'Personal | Email V3 (Story Telling) | Feb 2nd, 2026 | BATCH 1 Inboxes', dedupeField: 'fullName' } },\n  { json: { campaignId: 'bf19fef1-7545-41d8-96c9-0bae5b8831e8', campaignName: 'Personal | Email V4 (Direct) | Feb 12th, 2026 | BATCH 1 Inboxes',   dedupeField: 'fullName' } }\n];\n"
+      },
+      "id": "600b8dc4-f175-4a6d-8f2e-2000e3ad2526",
+      "name": "Campaign List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9xKHUUh1ZDrP9mMu",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "7f1eb5b8-6f3d-4c0d-8df1-612b258a8eda",
+      "name": "Run Campaign Sub-workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results   = $input.all();\nconst dateLabel = results[0]?.json?.dateLabel || 'yesterday';\n\nlet grandTotalLeads     = 0;\nlet grandTotalYesterday = 0;\nlet grandTotalAllTime   = 0;\nconst lines = [];\n\nfor (const item of results) {\n  const r = item.json;\n  grandTotalLeads     += r.totalLeads || 0;\n  grandTotalYesterday += r.uniqueCount || 0;\n  grandTotalAllTime   += r.allTimeUniqueCount || 0;\n\n  lines.push(\n    `*${r.campaignName}*\\n` +\n    `\\u21b3 Yesterday: ${r.uniqueCount} unique leads | ${r.yday_replies} replies | ${r.yday_positive} positive | ${r.yday_opportunities} opps | ${r.yday_reply_rate} reply rate | ${r.yday_positive_rate} positive rate\\n` +\n    `\\u21b3 All-time:  ${r.allTimeUniqueCount} unique leads | ${r.alltime_replies} replies | ${r.alltime_positive} positive | ${r.alltime_opportunities} opps | ${r.alltime_reply_rate} reply rate | ${r.alltime_positive_rate} positive rate`\n  );\n}\n\nconst text = [\n  `:bar_chart: *Instantly Daily Report \\u2013 ${dateLabel}*`,\n  '',\n  lines.join('\\n\\n'),\n  '',\n  `_Total: ${grandTotalLeads} leads | Yesterday: ${grandTotalYesterday} unique | All-time: ${grandTotalAllTime} unique_`\n].join('\\n');\n\nreturn [{ json: { text, dateLabel } }];\n"
+      },
+      "id": "f74b708d-24c6-4c2a-a47c-c1cc6e88884e",
+      "name": "Compile Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "24ef18d4-db4b-4659-864c-eee9685a8d33",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "webhookId": "63eb0322-4d19-47d5-96aa-b9f4a5c5c5f5",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "29d4f2b7-bda2-4323-8078-4d60755ab7e8",
+      "name": "Loop Over Campaigns",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -64,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Campaign List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Compile Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Campaign Sub-workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Campaign Sub-workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Results": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
