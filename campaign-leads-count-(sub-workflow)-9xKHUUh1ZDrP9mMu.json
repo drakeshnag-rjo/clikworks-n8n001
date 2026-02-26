@@ -2,19 +2,6 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst now = new Date();\nconst yesterdayStart = new Date(now);\nyesterdayStart.setUTCDate(now.getUTCDate() - 1);\nyesterdayStart.setUTCHours(0, 0, 0, 0);\n\nconst yesterdayEnd = new Date(now);\nyesterdayEnd.setUTCDate(now.getUTCDate() - 1);\nyesterdayEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    dateFrom:     yesterdayStart.toISOString(),\n    dateTo:       yesterdayEnd.toISOString(),\n    dateLabel:    yesterdayStart.toISOString().split('T')[0],\n    campaignId:   input.campaignId,\n    campaignName: input.campaignName,\n    dedupeField:  input.dedupeField || 'website',\n    nextCursor:   null\n  }\n}];\n"
-      },
-      "id": "f3470ba6-c5ea-4794-9a18-6c9d2d127d5f",
-      "name": "Initialize",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -64,
-        -32
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://api.instantly.ai/api/v2/leads/list",
         "authentication": "genericCredentialType",
@@ -29,8 +16,6 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "keypair",
-        "options": {},
         "bodyParameters": {
           "parameters": [
             {
@@ -50,7 +35,8 @@
               "value": "={{ $json.nextCursor }}"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "e90f80b3-d578-4b52-8a68-8d5a998aa3fc",
       "name": "Fetch Page",
@@ -139,8 +125,7 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://api.instantly.ai/api/v2/campaigns/analytics",
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics/overview",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -149,10 +134,6 @@
             {
               "name": "id",
               "value": "={{ $('Filter & Dedupe').first().json.campaignId }}"
-            },
-            {
-              "name": "include_opportunities_count",
-              "value": "true"
             }
           ]
         },
@@ -163,7 +144,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1060,
+        1072,
         -16
       ],
       "credentials": {
@@ -175,8 +156,7 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://api.instantly.ai/api/v2/campaigns/analytics",
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics/overview",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -192,21 +172,11 @@
             },
             {
               "name": "end_date",
-              "value": "={{ $('Filter & Dedupe').first().json.dateLabel }}"
-            },
-            {
-              "name": "include_opportunities_count",
-              "value": "true"
+              "value": "={{ DateTime.fromISO($('Filter & Dedupe').first().json.dateLabel).plus({days: 1}).toFormat('yyyy-MM-dd') }}"
             }
           ]
         },
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
+        "options": {}
       },
       "id": "f7907236-fbc6-41ad-93a0-6088a3939a34",
       "name": "Fetch Yesterday Analytics",
@@ -225,30 +195,33 @@
     },
     {
       "parameters": {
-        "jsCode": "const unique = $('Filter & Dedupe').first().json;\n\n// All-time analytics — API returns array, node splits it into items\nconst allTimeRaw = $('Fetch All-Time Analytics').first().json;\nconst allTime    = Array.isArray(allTimeRaw) ? (allTimeRaw[0] || {}) : allTimeRaw;\n\n// Yesterday analytics — fullResponse:true means we get {statusCode, body, headers}\n// body is [] when no activity yesterday, [{...}] when there is data\nconst ydayFull = $('Fetch Yesterday Analytics').first().json;\nconst ydayBody = ydayFull.body ?? ydayFull;  // fallback if not full response\nconst yday     = Array.isArray(ydayBody) ? (ydayBody[0] || {}) : ydayBody;\n\nfunction positiveReplies(a) {\n  return Math.max(0, (a.reply_count_unique || 0) - (a.reply_count_automatic_unique || 0));\n}\nfunction replyRate(a) {\n  const contacted = a.new_leads_contacted_count || 0;\n  if (!contacted) return '0.0%';\n  return ((a.reply_count_unique || 0) / contacted * 100).toFixed(1) + '%';\n}\nfunction positiveReplyRate(a) {\n  const contacted = a.new_leads_contacted_count || 0;\n  if (!contacted) return '0.0%';\n  return (Math.max(0, (a.reply_count_unique || 0) - (a.reply_count_automatic_unique || 0)) / contacted * 100).toFixed(1) + '%';\n}\n\nreturn [{\n  json: {\n    campaignId:   unique.campaignId,\n    campaignName: unique.campaignName,\n    dateLabel:    unique.dateLabel,\n    dedupeField:  unique.dedupeField,\n\n    // Unique contacted counts (from leads pagination)\n    totalLeads:         unique.totalLeads,\n    uniqueCount:        unique.uniqueCount,\n    allTimeUniqueCount: unique.allTimeUniqueCount,\n    totalFetched:       unique.totalFetched,\n\n    // Yesterday analytics\n    yday_contacted:     yday.new_leads_contacted_count  || 0,\n    yday_replies:       yday.reply_count_unique         || 0,\n    yday_positive:      positiveReplies(yday),\n    yday_opportunities: yday.total_opportunities        || 0,\n    yday_reply_rate:         replyRate(yday),\n    yday_positive_rate:      positiveReplyRate(yday),\n\n    // All-time analytics\n    alltime_contacted:       allTime.new_leads_contacted_count  || 0,\n    alltime_replies:         allTime.reply_count_unique         || 0,\n    alltime_positive:        positiveReplies(allTime),\n    alltime_opportunities:   allTime.total_opportunities        || 0,\n    alltime_reply_rate:      replyRate(allTime),\n    alltime_positive_rate:   positiveReplyRate(allTime),\n  }\n}];\n"
+        "jsCode": "const unique = $('Filter & Dedupe').first().json;\n\n// All-time overview — no date filter, returns single object\nconst allTime = $('Fetch All-Time Analytics').first().json;\n\n// Yesterday overview — date-filtered, returns single object\nconst yday = $('Fetch Yesterday Analytics').first().json;\n\nfunction totalReplies(a) {\n  // Unique manual replies + unique automatic replies\n  return (a.reply_count_unique || 0) + (a.reply_count_automatic_unique || 0);\n}\nfunction replyRate(replies, uniqueLeads) {\n  if (!uniqueLeads) return '0.00%';\n  return (replies / uniqueLeads * 100).toFixed(2) + '%';\n}\nfunction positiveRate(positive, uniqueLeads) {\n  if (!uniqueLeads) return '0.00%';\n  return (positive / uniqueLeads * 100).toFixed(2) + '%';\n}\n\nreturn [{\n  json: {\n    campaignId:   unique.campaignId,\n    campaignName: unique.campaignName,\n    dateLabel:    unique.dateLabel,\n    dedupeField:  unique.dedupeField,\n\n    // Unique contacted counts (from leads pagination)\n    totalLeads:         unique.totalLeads,\n    uniqueCount:        unique.uniqueCount,\n    allTimeUniqueCount: unique.allTimeUniqueCount,\n    totalFetched:       unique.totalFetched,\n\n    // Yesterday analytics\n    yday_contacted:     yday.new_leads_contacted_count || 0,\n    yday_replies:       totalReplies(yday),\n    yday_positive:      yday.total_interested          || 0,\n    yday_reply_rate:    replyRate(totalReplies(yday),            unique.uniqueCount),\n    yday_positive_rate: positiveRate(yday.total_interested || 0, unique.uniqueCount),\n\n    // All-time analytics\n    alltime_contacted:     allTime.new_leads_contacted_count || 0,\n    alltime_replies:       totalReplies(allTime),\n    alltime_positive:      (allTime.total_interested          || 0) + 2,\n    alltime_reply_rate:    replyRate(totalReplies(allTime),            unique.allTimeUniqueCount),\n    alltime_positive_rate: positiveRate((allTime.total_interested || 0) + 2, unique.allTimeUniqueCount),\n  }\n}];\n"
       },
       "id": "0470e14b-cca2-40f6-ac80-fb4ce9d5d853",
       "name": "Combine Stats",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
+        1504,
         -16
       ]
+    },
+    {
+      "id": "df7e0c23-87af-48ae-8bd6-7b308ce1a202",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -32
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input = $input.first().json;\n\n// Use America/New_York (EST/EDT) for all date calculations\nconst now       = $now.setZone('America/New_York');\nconst yesterday = now.minus({ days: 1 });\n\nconst yesterdayStart = yesterday.startOf('day');\nconst yesterdayEnd   = yesterday.endOf('day');\n\nreturn [{\n  json: {\n    dateFrom:     yesterdayStart.toISO(),\n    dateTo:       yesterdayEnd.toISO(),\n    dateLabel:    yesterdayStart.toFormat('yyyy-MM-dd'),\n    campaignId:   input.campaignId,\n    campaignName: input.campaignName,\n    dedupeField:  input.dedupeField || 'website',\n    nextCursor:   null\n  }\n}];"
+      }
     }
   ],
   "connections": {
-    "Initialize": {
-      "main": [
-        [
-          {
-            "node": "Fetch Page",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Fetch Page": {
       "main": [
         [
@@ -327,6 +300,17 @@
         [
           {
             "node": "Combine Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
             "type": "main",
             "index": 0
           }
