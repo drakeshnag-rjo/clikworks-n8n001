@@ -1,0 +1,323 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.instantly.ai/api/v2/leads/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            },
+            {
+              "name": "campaign",
+              "value": "={{ $json.campaignId }}"
+            },
+            {
+              "name": "filter",
+              "value": "FILTER_VAL_CONTACTED"
+            },
+            {
+              "name": "starting_after",
+              "value": "={{ $json.nextCursor }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e90f80b3-d578-4b52-8a68-8d5a998aa3fc",
+      "name": "Fetch Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        -32
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jo79Z9OrITlgl5CP",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const page = $input.first().json;\nconst prev = $('Initialize').first().json;\n\nconst staticData = $getWorkflowStaticData('global');\n\nif (staticData.executionId !== $execution.id) {\n  staticData.executionId = $execution.id;\n  staticData.allLeads = [];\n}\n\nconst newItems = page.items || [];\nstaticData.allLeads = staticData.allLeads.concat(newItems);\n\nconst nextCursor = page.next_starting_after || null;\nconst hasMore    = newItems.length === 100 && nextCursor !== null;\n\nreturn [{\n  json: {\n    dateFrom:     prev.dateFrom,\n    dateTo:       prev.dateTo,\n    dateLabel:    prev.dateLabel,\n    campaignId:   prev.campaignId,\n    campaignName: prev.campaignName,\n    dedupeField:  prev.dedupeField,\n    nextCursor,\n    hasMore,\n    pageCount: Math.ceil(staticData.allLeads.length / 100)\n  }\n}];\n"
+      },
+      "id": "3dee45f8-3c7d-47d3-9ed3-b3f7bb9dee8a",
+      "name": "Accumulate Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-more",
+              "leftValue": "={{ $json.hasMore }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "93eb6251-4d6e-49cd-b863-1de0841011c4",
+      "name": "More Pages?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst staticData = $getWorkflowStaticData('global');\nconst allLeads   = staticData.allLeads || [];\n\nconst dateFrom    = new Date(input.dateFrom);\nconst dateTo      = new Date(input.dateTo);\nconst dedupeField = input.dedupeField || 'website';\n\nfunction getDedupeKey(lead) {\n  if (dedupeField === 'fullName') {\n    return ((lead.payload && lead.payload['Full Name']) || '').trim().toLowerCase();\n  }\n  return (lead.website || '').trim().toLowerCase();\n}\n\n// Yesterday's leads and unique values\nconst filteredYesterday = allLeads.filter(lead => {\n  if (!lead.timestamp_last_contact) return false;\n  const ts = new Date(lead.timestamp_last_contact);\n  return ts >= dateFrom && ts <= dateTo;\n});\n\nconst seenYesterday = new Set();\nfor (const lead of filteredYesterday) {\n  const key = getDedupeKey(lead);\n  if (key) seenYesterday.add(key);\n}\n\n// All-time unique values (no date filter)\nconst seenAllTime = new Set();\nfor (const lead of allLeads) {\n  const key = getDedupeKey(lead);\n  if (key) seenAllTime.add(key);\n}\n\n// Clear static data after use\nstaticData.allLeads    = [];\nstaticData.executionId = null;\n\nreturn [{\n  json: {\n    campaignId:         input.campaignId,\n    campaignName:       input.campaignName,\n    dateLabel:          input.dateLabel,\n    dedupeField,\n    totalLeads:         filteredYesterday.length,\n    uniqueCount:        seenYesterday.size,\n    allTimeUniqueCount: seenAllTime.size,\n    totalFetched:       allLeads.length\n  }\n}];\n"
+      },
+      "id": "74a6f0a8-2f83-4e08-a6f6-33d39b15c3c9",
+      "name": "Filter & Dedupe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -16
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "330a69f6-d490-49df-9e1f-40b3d2fe5030",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics/overview",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $('Filter & Dedupe').first().json.campaignId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b6937a0-42a5-4d00-abf8-9cd7285da32b",
+      "name": "Fetch All-Time Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1072,
+        -16
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jo79Z9OrITlgl5CP",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.instantly.ai/api/v2/campaigns/analytics/overview",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $('Filter & Dedupe').first().json.campaignId }}"
+            },
+            {
+              "name": "start_date",
+              "value": "={{ $('Filter & Dedupe').first().json.dateLabel }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ DateTime.fromISO($('Filter & Dedupe').first().json.dateLabel).plus({days: 1}).toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7907236-fbc6-41ad-93a0-6088a3939a34",
+      "name": "Fetch Yesterday Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        -16
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jo79Z9OrITlgl5CP",
+          "name": "Abhay-RMG Instantly"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const unique = $('Filter & Dedupe').first().json;\n\n// All-time overview — no date filter, returns single object\nconst allTime = $('Fetch All-Time Analytics').first().json;\n\n// Yesterday overview — date-filtered, returns single object\nconst yday = $('Fetch Yesterday Analytics').first().json;\n\nfunction totalReplies(a) {\n  // Unique manual replies + unique automatic replies\n  return (a.reply_count_unique || 0) + (a.reply_count_automatic_unique || 0);\n}\nfunction replyRate(replies, uniqueLeads) {\n  if (!uniqueLeads) return '0.00%';\n  return (replies / uniqueLeads * 100).toFixed(2) + '%';\n}\nfunction positiveRate(positive, uniqueLeads) {\n  if (!uniqueLeads) return '0.00%';\n  return (positive / uniqueLeads * 100).toFixed(2) + '%';\n}\n\nreturn [{\n  json: {\n    campaignId:   unique.campaignId,\n    campaignName: unique.campaignName,\n    dateLabel:    unique.dateLabel,\n    dedupeField:  unique.dedupeField,\n\n    // Unique contacted counts (from leads pagination)\n    totalLeads:         unique.totalLeads,\n    uniqueCount:        unique.uniqueCount,\n    allTimeUniqueCount: unique.allTimeUniqueCount,\n    totalFetched:       unique.totalFetched,\n\n    // Yesterday analytics\n    yday_contacted:     yday.new_leads_contacted_count || 0,\n    yday_replies:       totalReplies(yday),\n    yday_positive:      yday.total_interested          || 0,\n    yday_reply_rate:    replyRate(totalReplies(yday),            unique.uniqueCount),\n    yday_positive_rate: positiveRate(yday.total_interested || 0, unique.uniqueCount),\n\n    // All-time analytics\n    alltime_contacted:     allTime.new_leads_contacted_count || 0,\n    alltime_replies:       totalReplies(allTime),\n    alltime_positive:      (allTime.total_interested || 0) + (unique.campaignId === 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3' ? 2 : 0),\n    alltime_reply_rate:    replyRate(totalReplies(allTime),            unique.allTimeUniqueCount),\n    alltime_positive_rate: positiveRate((allTime.total_interested || 0) + (unique.campaignId === 'cb5b45d3-67ce-46ce-bfe8-3e2e70bdd2f3' ? 2 : 0), unique.allTimeUniqueCount),\n  }\n}];\n"
+      },
+      "id": "0470e14b-cca2-40f6-ac80-fb4ce9d5d853",
+      "name": "Combine Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -16
+      ]
+    },
+    {
+      "id": "df7e0c23-87af-48ae-8bd6-7b308ce1a202",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -32
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input = $input.first().json;\n\n// Use America/New_York (EST/EDT) for all date calculations\nconst now       = $now.setZone('America/New_York');\nconst yesterday = now.minus({ days: 1 });\n\nconst yesterdayStart = yesterday.startOf('day');\nconst yesterdayEnd   = yesterday.endOf('day');\n\nreturn [{\n  json: {\n    dateFrom:     yesterdayStart.toISO(),\n    dateTo:       yesterdayEnd.toISO(),\n    dateLabel:    yesterdayStart.toFormat('yyyy-MM-dd'),\n    campaignId:   input.campaignId,\n    campaignName: input.campaignName,\n    dedupeField:  input.dedupeField || 'website',\n    nextCursor:   null\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Fetch Page": {
+      "main": [
+        [
+          {
+            "node": "Accumulate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accumulate Leads": {
+      "main": [
+        [
+          {
+            "node": "More Pages?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Pages?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter & Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Dedupe": {
+      "main": [
+        [
+          {
+            "node": "Fetch All-Time Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All-Time Analytics": {
+      "main": [
+        [
+          {
+            "node": "Fetch Yesterday Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Yesterday Analytics": {
+      "main": [
+        [
+          {
+            "node": "Combine Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
