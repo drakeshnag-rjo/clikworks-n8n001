@@ -81,8 +81,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1088,
-        304
+        1072,
+        400
       ]
     },
     {
@@ -120,8 +120,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1312,
-        304
+        1296,
+        400
       ]
     },
     {
@@ -179,8 +179,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1520,
-        304
+        1504,
+        400
       ]
     },
     {
@@ -218,9 +218,38 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1744,
-        304
+        1728,
+        400
       ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "done",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1072,
+        224
+      ],
+      "id": "e61bf702-8247-494f-9651-4f058b34d08e",
+      "name": "Send a message",
+      "webhookId": "361fe432-7b07-4d80-8629-0a67be77ba1f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
     }
   ],
   "connections": {
@@ -261,12 +290,18 @@
       "main": [
         [
           {
-            "node": "Fetch Articles",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Fetch Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Fetch Articles": {
