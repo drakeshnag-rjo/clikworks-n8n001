@@ -1,0 +1,356 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cm-n1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "i1",
+              "name": "start_date",
+              "value": "2026-02-01",
+              "type": "string"
+            },
+            {
+              "id": "i2",
+              "name": "end_date",
+              "value": "2026-02-07",
+              "type": "string"
+            },
+            {
+              "id": "i3",
+              "name": "keywords",
+              "value": "fire, lawsuit, recall",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cm-n2",
+      "name": "Set Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        432,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input     = $input.first().json;\nconst startDate = input.start_date;\nconst endDate   = input.end_date;\nconst kwRaw     = input.keywords;\n\nif (!startDate || !endDate) throw new Error('start_date and end_date are required.');\nif (!kwRaw || !kwRaw.trim()) throw new Error('keywords field is empty.');\n\n// Parse comma-separated keywords\nconst keywords = kwRaw.split(',').map(k => k.trim()).filter(k => k.length > 0);\nif (keywords.length === 0) throw new Error('No valid keywords after parsing.');\n\n// Generate date range (inclusive)\nconst dates = [];\nconst cur = new Date(startDate + 'T00:00:00Z');\nconst end = new Date(endDate   + 'T00:00:00Z');\nif (cur > end) throw new Error('start_date must be on or before end_date.');\nwhile (cur <= end) {\n  const y = cur.getUTCFullYear();\n  const m = String(cur.getUTCMonth() + 1).padStart(2, '0');\n  const d = String(cur.getUTCDate()).padStart(2, '0');\n  dates.push(y + '-' + m + '-' + d);\n  cur.setUTCDate(cur.getUTCDate() + 1);\n}\n\n// Cartesian product: each date x each keyword\nconst items = [];\nfor (const date of dates) {\n  for (const keyword of keywords) {\n    items.push({ json: { date, keyword } });\n  }\n}\nconsole.log('Work items: ' + items.length + ' (' + dates.length + ' dates x ' + keywords.length + ' keywords)');\nreturn items;\n"
+      },
+      "id": "cm-n3",
+      "name": "Build Work Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "cm-n4",
+      "name": "Loop Work Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        864,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item         = $input.first().json;\nconst keyword      = item.keyword;\nconst targetDate   = item.date;\nconst CM_API_KEY   = \"mr3oBmqcPm9jR687ZUljv2Iz062gkkH65AX9zhWW\";\n\nconst CM_ENDPOINT = 'https://media-api-trial.onclusive.com/v1/search/articles';\nconst LIMIT       = 100;\nconst MAX_PAGES   = 100;\n\nconst EXCLUDED_DOMAINS = [\n  'msn.com', 'patch.com', 'tezzbuzz.com', 'vrmintel.com',\n  'onlinelibrary.wiley.com', 'cryptopanic.com', 'pubmed.ncbi.nlm.nih.gov',\n  'dailymed.nlm.nih.gov', 'newsnowchicago.com', 'tandfonline.com',\n  'exbulletin.com', 'kerrfatou.com', 'tncontentexchange.com',\n  'tallasseetribune.com', 'dailyworldfeed.com', 'timebusinessnews.com',\n  'limitedliability.solutions', 'e-stardom.com', 'byteseu.com'\n];\n\nlet page = 1, total = Infinity, fetched = 0;\nconst allArticles = [];\n\nwhile (page <= MAX_PAGES && (page - 1) * LIMIT < total) {\n  const body = {\n    query: { simple: {\n      terms: '\"' + keyword + '\"',\n      case_sensitive_terms: '', operator: 'and',\n      search_fields: ['title', 'content']\n    }},\n    limit: LIMIT, page,\n    filters: {\n      date: { start: targetDate + ' 00:00', end: targetDate + ' 23:59', time_zone: '-04:00' },\n      lang: [], publication: [],\n      pagerank: { min: 0, max: 10 }, country: ['USA'], relevance: { min: 0 },\n      article_sentiment: { positive: true, neutral: true, negative: true },\n      es_filter: {}\n    },\n    exclude: { country: [], domains: EXCLUDED_DOMAINS },\n    sort: ['published_on'], remove_duplicates: true, profile_uuid: null,\n    return_fields: ['published_on', 'title', 'summary', 'url'],\n    media_types: ['web']\n  };\n\n  const res = await fetch(CM_ENDPOINT, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'X-API-Key': CM_API_KEY },\n    body: JSON.stringify(body)\n  });\n  if (!res.ok) throw new Error(\n    'CM error | kw: ' + keyword + ' | date: ' + targetDate + ' | page: ' + page + ' | status: ' + res.status\n  );\n\n  const data = await res.json();\n  if (page === 1) { total = data.total || 0; if (total === 0) break; }\n\n  const articles = data.articles || data.data || data.results || [];\n  for (const a of articles) {\n    allArticles.push({\n      keyword, pull_date: targetDate,\n      title:        a.title        || null,\n      summary:      a.summary      || null,\n      url:          a.url          || null,\n      published_on: a.published_on || null\n    });\n  }\n  fetched += articles.length;\n  if (articles.length < LIMIT) break;\n  page++;\n}\n\nreturn [{ json: {\n  keyword,\n  pull_date:        targetDate,\n  articles:         allArticles,\n  total_available:  total === Infinity ? 0 : total,\n  pages_run:        page - 1,\n  articles_fetched: fetched\n}}];\n"
+      },
+      "id": "cm-n5",
+      "name": "Fetch Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://supabase.com/dashboard/project/rvahoijqlnuquwovxnrd/rest/v1/articles",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2YWhvaWpxbG51cXV3b3Z4bnJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDcxOTk0NiwiZXhwIjoyMDgwMjk1OTQ2fQ.BvpYY-2CUNj_KLqiP518-fZpzP8blQGPblNuN5nqcd4"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2YWhvaWpxbG51cXV3b3Z4bnJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDcxOTk0NiwiZXhwIjoyMDgwMjk1OTQ2fQ.BvpYY-2CUNj_KLqiP518-fZpzP8blQGPblNuN5nqcd4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.articles) }}",
+        "options": {}
+      },
+      "id": "cm-n6",
+      "name": "Upsert Articles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1296,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l1",
+              "name": "keyword",
+              "value": "={{ $('Fetch Articles').first().json.keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "l2",
+              "name": "pull_date",
+              "value": "={{ $('Fetch Articles').first().json.pull_date }}",
+              "type": "string"
+            },
+            {
+              "id": "l3",
+              "name": "total_available",
+              "value": "={{ $('Fetch Articles').first().json.total_available }}",
+              "type": "number"
+            },
+            {
+              "id": "l4",
+              "name": "pages_run",
+              "value": "={{ $('Fetch Articles').first().json.pages_run }}",
+              "type": "number"
+            },
+            {
+              "id": "l5",
+              "name": "articles_fetched",
+              "value": "={{ $('Fetch Articles').first().json.articles_fetched }}",
+              "type": "number"
+            },
+            {
+              "id": "l6",
+              "name": "articles_inserted",
+              "value": "={{ $('Fetch Articles').first().json.articles_fetched }}",
+              "type": "number"
+            },
+            {
+              "id": "l7",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cm-n7",
+      "name": "Build Log Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://supabase.com/dashboard/project/rvahoijqlnuquwovxnrd/rest/v1/pull_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2YWhvaWpxbG51cXV3b3Z4bnJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDcxOTk0NiwiZXhwIjoyMDgwMjk1OTQ2fQ.BvpYY-2CUNj_KLqiP518-fZpzP8blQGPblNuN5nqcd4"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2YWhvaWpxbG51cXV3b3Z4bnJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDcxOTk0NiwiZXhwIjoyMDgwMjk1OTQ2fQ.BvpYY-2CUNj_KLqiP518-fZpzP8blQGPblNuN5nqcd4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "cm-n8",
+      "name": "Write Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1728,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09KPT39F1D",
+          "mode": "list",
+          "cachedResultName": "textinggggggg"
+        },
+        "text": "done",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1072,
+        224
+      ],
+      "id": "e61bf702-8247-494f-9651-4f058b34d08e",
+      "name": "Send a message",
+      "webhookId": "361fe432-7b07-4d80-8629-0a67be77ba1f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hzqvg6T6xgzntMzr",
+          "name": "Abhay-InfiniteSkills Acc."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Inputs": {
+      "main": [
+        [
+          {
+            "node": "Build Work Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Work Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Work Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Work Items": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Articles": {
+      "main": [
+        [
+          {
+            "node": "Upsert Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Articles": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Log Row": {
+      "main": [
+        [
+          {
+            "node": "Write Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Log": {
+      "main": [
+        [
+          {
+            "node": "Loop Work Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
