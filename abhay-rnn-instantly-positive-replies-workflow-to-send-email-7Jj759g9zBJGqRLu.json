@@ -1,0 +1,111 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "7797mta@gmail.com,pdesroches@mossbuildinganddesign.com,deanna@renolution.com,bharat.devana@infiniteskills.in",
+        "subject": "🎉 Positive reply received-RNN",
+        "message": "={{ $json.body.a }}",
+        "options": {
+          "bccList": "abhayaanjaneyulup@gmail.com",
+          "senderName": "Notifications"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "60581fc8-ebc7-4136-91a3-16d0098da05a",
+      "name": "Send a message",
+      "webhookId": "fd3201c7-ff1f-4384-a365-d89002104cfa",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "62628b64-3cfd-4f69-a6d5-585de1a0ec96",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        -16
+      ],
+      "id": "e19e100b-c436-4a3f-afaa-a23ee0bcb20c",
+      "name": "Webhook",
+      "webhookId": "62628b64-3cfd-4f69-a6d5-585de1a0ec96"
+    },
+    {
+      "parameters": {
+        "sendTo": "abhayaanjaneyulup@gmail.com",
+        "subject": "🎉 Positive reply received-RNN",
+        "message": "={{ $json.body.a }}",
+        "options": {
+          "senderName": "Notifications"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        -208
+      ],
+      "id": "b902e822-ebcc-46fe-97c4-467afd421755",
+      "name": "Send a message1",
+      "webhookId": "fd3201c7-ff1f-4384-a365-d89002104cfa",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1jbULp3mZWHpBMiC",
+          "name": "Abhay.padavala Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "1478e64b-6e16-4c54-9fd0-6dbda5d4917b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "7f7b7d95-8870-4561-9a19-1251bbcb4478",
+      "name": "Webhook1",
+      "webhookId": "1478e64b-6e16-4c54-9fd0-6dbda5d4917b"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {}
+}
