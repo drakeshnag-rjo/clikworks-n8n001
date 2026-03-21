@@ -9,25 +9,165 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        0,
-        0
+        -192,
+        -32
       ],
       "id": "dd547837-9ed0-499d-a8a9-959f31703b01",
       "name": "Edit Fields"
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "https://api.clay.com/v3/sources/webhook/pull-in-data-from-a-webhook-80a8189d-23da-4a84-ab82-eb4a55b4caaa",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "=\n\"City\": \n\"Chicago\",\n  \n  \n\"step\": \n1,\n  \n  \n\"email\": \n\"joe@giant-hvac.com\",\n  \n  \n\"phone\": \n\"(773) 539-9629\",\n  \n  \n\"Rating\": \n\"2.8\",\n  \n  \n\"Reviews\": \n\"22\",\n  \n  \n\"variant\": \n1,\n  \n  \n\"website\": \n\"giant-hvac.com\",\n  \n  \n\"Category\": \n\"Heizungsmonteur\",\n  \n  \n\"Services\": \n\"provides HVAC services\",\n  \n  \n\"email_id\": \n\"019cfc80-70c7-7b7f-a3fe-ac6ca4ad5bab\",\n  \n  \n\"is_first\": \ntrue,\n  \n  \n\"jobTitle\": \n\"Owner\",\n  \n  \n\"lastName\": \n\"'joe' Novelo\",\n  \n  \n\"location\": \n\"4315 N Elston Ave, Chicago, IL 60641, Vereinigte Staaten\",\n  \n  \n\"Full Name\": \n\"Jose 'Joe' Novelo\",\n  \n  \n\"firstName\": \n\"Jose\",\n  \n  \n\"timestamp\": \n\"2026-03-17T15:53:23.018Z\",\n  \n  \n\"workspace\": \n\"c3b76eee-ecee-4c85-be84-7e778a012321\",\n  \n  \n\"State Code\": \n\"IL\",\n  \n  \n\"event_type\": \n\"reply_received\",\n  \n  \n\"lead_email\": \"\"",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "City",
+              "value": "={{ $json.City }}"
+            },
+            {
+              "name": "step",
+              "value": "={{ $json.step }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "Rating",
+              "value": "={{ $json.Rating }}"
+            },
+            {
+              "name": "Reviews",
+              "value": "={{ $json.Reviews }}"
+            },
+            {
+              "name": "variant",
+              "value": "={{ $json.variant }}"
+            },
+            {
+              "name": "website",
+              "value": "={{ $json.website }}"
+            },
+            {
+              "name": "Category",
+              "value": "={{ $json.Category }}"
+            },
+            {
+              "name": "Services",
+              "value": "={{ $json.Services }}"
+            },
+            {
+              "name": "email_id",
+              "value": "={{ $json.email_id }}"
+            },
+            {
+              "name": "is_first",
+              "value": "={{ $json.is_first }}"
+            },
+            {
+              "name": "jobTitle",
+              "value": "={{ $json.jobTitle }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $json.lastName }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "Full Name",
+              "value": "={{ $json[\"Full Name\"] }}"
+            },
+            {
+              "name": "firstName",
+              "value": "={{ $json.firstName }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "workspace",
+              "value": "={{ $json.workspace }}"
+            },
+            {
+              "name": "State Code",
+              "value": "={{ $json[\"State Code\"] }}"
+            },
+            {
+              "name": "event_type",
+              "value": "={{ $json.event_type }}"
+            },
+            {
+              "name": "lead_email",
+              "value": "={{ $json.lead_email }}"
+            },
+            {
+              "name": "reply_text",
+              "value": "={{ $json.reply_text }}"
+            },
+            {
+              "name": "unibox_url",
+              "value": "={{ $json.unibox_url }}"
+            },
+            {
+              "name": "campaign_id",
+              "value": "={{ $json.campaign_id }}"
+            },
+            {
+              "name": "companyName",
+              "value": "={{ $json.companyName }}"
+            },
+            {
+              "name": "campaign_name",
+              "value": "={{ $json.campaign_name }}"
+            },
+            {
+              "name": "email_account",
+              "value": "={{ $json.email_account }}"
+            },
+            {
+              "name": "reply_subject",
+              "value": "={{ $json.reply_subject }}"
+            },
+            {
+              "name": "Email Provider",
+              "value": "={{ $json[\"Email Provider\"] }}"
+            },
+            {
+              "name": "Services Summary",
+              "value": "={{ $json[\"Services Summary\"] }}"
+            },
+            {
+              "name": "reply_text_snippet",
+              "value": "={{ $json.reply_text_snippet }}"
+            }
+          ]
+        },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        208,
-        0
+        16,
+        -32
       ],
       "id": "acc5b4c9-a11f-4672-ab4d-08e7279d02dc",
       "name": "HTTP Request"
