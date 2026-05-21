@@ -8,8 +8,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -48,
+        -64
       ],
       "id": "2678c0f2-bb47-4f91-a714-253c8c184f9c",
       "name": "Webhook",
@@ -17,7 +17,6 @@
     },
     {
       "parameters": {
-        "sendTo": "bharat.devana@infiniteskills.in,7797mta@gmail.com",
         "subject": "🎉 Positive reply received-SBX",
         "message": "={{ $json.body.a }}",
         "options": {
@@ -45,13 +44,7 @@
   "connections": {
     "Webhook": {
       "main": [
-        [
-          {
-            "node": "Send a message",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },
