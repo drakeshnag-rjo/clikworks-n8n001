@@ -17,9 +17,12 @@
     },
     {
       "parameters": {
-        "subject": "🎉 Positive reply received-SBX",
-        "message": "={{ $json.body.a }}",
+        "sendTo": "bharat.devana@infiniteskills.in,7797mta@gmail.com",
+        "subject": "🎉 Positive reply received-SBX📦",
+        "emailType": "text",
+        "message": "Hiiiiiiiiiiii",
         "options": {
+          "appendAttribution": false,
           "bccList": "abhayaanjaneyulup@gmail.com",
           "senderName": "Notifications"
         }
@@ -27,11 +30,11 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        208,
-        0
+        160,
+        -64
       ],
-      "id": "99dd38ba-f8c6-4bd1-aa29-e1106d97a244",
-      "name": "Send a message",
+      "id": "2a6cb899-2481-405f-9263-568ad95b3944",
+      "name": "Send a message1",
       "webhookId": "fd3201c7-ff1f-4384-a365-d89002104cfa",
       "credentials": {
         "gmailOAuth2": {
@@ -44,7 +47,13 @@
   "connections": {
     "Webhook": {
       "main": [
-        []
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
