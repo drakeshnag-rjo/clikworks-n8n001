@@ -18,9 +18,8 @@
     {
       "parameters": {
         "sendTo": "bharat.devana@infiniteskills.in,7797mta@gmail.com",
-        "subject": "🎉 Positive reply received-SBX📦",
-        "emailType": "text",
-        "message": "Hiiiiiiiiiiii",
+        "subject": "=🎉 Positive reply received-SBX📦",
+        "message": "={{ $json.body.a }}",
         "options": {
           "appendAttribution": false,
           "bccList": "abhayaanjaneyulup@gmail.com",
