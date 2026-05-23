@@ -21,6 +21,7 @@
         "subject": "🎉 Positive reply received-RNN",
         "message": "={{ $json.body.a }}",
         "options": {
+          "appendAttribution": false,
           "bccList": "abhayaanjaneyulup@gmail.com",
           "senderName": "Notifications"
         }
@@ -83,6 +84,7 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "74378dfe-77b2-4d24-88ac-84ba40579ac8",
         "options": {}
       },
