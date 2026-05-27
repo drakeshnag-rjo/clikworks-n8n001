@@ -84,7 +84,12 @@
     },
     {
       "parameters": {
-        "httpMethod": "POST",
+        "multipleMethods": true,
+        "httpMethod": [
+          "GET",
+          "POST",
+          "HEAD"
+        ],
         "path": "74378dfe-77b2-4d24-88ac-84ba40579ac8",
         "options": {}
       },
@@ -96,7 +101,8 @@
       ],
       "id": "6a768198-b73c-4917-af02-26039f01da93",
       "name": "Webhook1",
-      "webhookId": "74378dfe-77b2-4d24-88ac-84ba40579ac8"
+      "webhookId": "74378dfe-77b2-4d24-88ac-84ba40579ac8",
+      "retryOnFail": false
     }
   ],
   "connections": {
@@ -124,6 +130,20 @@
     },
     "Webhook1": {
       "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Code in JavaScript",
